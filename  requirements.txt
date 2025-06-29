@@ -6,8 +6,17 @@ pydantic>=2.5.0
 pydantic-settings>=2.1.0
 python-dotenv>=1.0.0
 aiofiles>=23.2.0
+numpy==1.26.4
 
 # TTS dependencies
 google-cloud-texttospeech>=2.16.0
 requests>=2.31.0
 httpx>=0.25.0
+
+# Vector Database & Embeddings
+qdrant-client==1.9.1
+openai==1.35.3
+
+# Memory & Caching
+redis==5.0.4               # For fast memory caching
+aioredis==2.0.1           # Async Redis client
