@@ -1,4 +1,4 @@
-# app/core/memory/character_memory.py
+# app/core/ai/memory/character_memory.py
 import logging
 import time
 from typing import List, Dict

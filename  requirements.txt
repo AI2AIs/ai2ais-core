@@ -11,11 +11,11 @@ numpy==1.26.4
 # TTS dependencies
 google-cloud-texttospeech>=2.16.0
 requests>=2.31.0
-httpx>=0.25.0
+httpx>=0.28.1
 
 # Vector Database & Embeddings
-qdrant-client==1.9.1
-openai==1.35.3
+qdrant-client==1.14.3
+openai==1.93.0
 
 # Memory & Caching
 redis==5.0.4               # For fast memory caching

@@ -1,4 +1,4 @@
-# app/core/memory/vector_store.py - SIMPLE QDRANT FORMAT
+# app/core/ai/memory/vector_store.py - SIMPLE QDRANT FORMAT
 import asyncio
 import logging
 from typing import List, Dict, Optional, Any
@@ -51,24 +51,25 @@ class MemoryVectorStore:
             return
             
         try:
-            # Try to get existing collection
-            self.client.get_collection(self.collection_name)
-            logger.info(f"✅ Collection '{self.collection_name}' already exists")
+            collection_info = self.client.get_collection(self.collection_name)
+            logger.info(f"✅ Collection '{self.collection_name}' exists")
             
-        except UnexpectedResponse:
-            # Collection doesn't exist, create it
+        except Exception:
             try:
-                self.client.create_collection(
+                from qdrant_client.models import VectorParams, Distance
+                
+                # ✅ Recreate with proper params
+                self.client.recreate_collection(
                     collection_name=self.collection_name,
                     vectors_config=VectorParams(
                         size=self.dimension,
                         distance=Distance.COSINE
                     )
                 )
-                logger.info(f"✅ Created collection '{self.collection_name}'")
+                logger.info(f"✅ Recreated collection '{self.collection_name}'")
                 
             except Exception as e:
-                logger.error(f"❌ Failed to create collection: {e}")
+                logger.error(f"❌ Collection creation failed: {e}")
                 raise
     
     async def store_memory(self, memory_data: Dict) -> bool:
@@ -79,62 +80,64 @@ class MemoryVectorStore:
             return await self._store_memory_mock(memory_data)
         
         try:
-            # ✅ SIMPLEST FORMAT - Direct dictionary
-            points = [
-                {
-                    "id": memory_data["id"],
-                    "payload": memory_data["metadata"],
-                    "vector": memory_data["vector"]
-                }
-            ]
+            # ✅ Import at method level to avoid circular imports
+            from qdrant_client.models import PointStruct
             
-            # Debug logging
-            logger.debug(f"Storing point with ID: {memory_data['id']}")
-            logger.debug(f"Vector type: {type(memory_data['vector'])}, length: {len(memory_data['vector'])}")
-            logger.debug(f"First few vector values: {memory_data['vector'][:5]}")
+            # ✅ Extract and validate data
+            memory_id = str(memory_data["id"])
+            vector = memory_data["vector"]
+            metadata = memory_data["metadata"]
             
-            # Use put method instead of upsert
-            operation_result = self.client.upsert(
-                collection_name=self.collection_name,
-                points=points
+            # ✅ Vector validation
+            if not isinstance(vector, list):
+                logger.error(f"❌ Vector must be list, got {type(vector)}")
+                return await self._store_memory_mock(memory_data)
+            
+            # Ensure all values are floats
+            vector = [float(x) for x in vector]
+            
+            if len(vector) != self.dimension:
+                logger.error(f"❌ Vector dimension mismatch: {len(vector)} vs {self.dimension}")
+                return await self._store_memory_mock(memory_data)
+            
+            # ✅ Create point using PointStruct
+            point = PointStruct(
+                id=memory_id,
+                vector=vector,
+                payload=metadata
             )
             
-            logger.info(f"✅ Memory stored: {memory_data['id']}")
+            # ✅ Debug logging
+            logger.debug(f"🔍 Storing point: ID={memory_id}")
+            logger.debug(f"🔍 Vector: len={len(vector)}, sample={vector[:3]}")
+            logger.debug(f"🔍 Payload keys: {list(metadata.keys())}")
+            
+            # ✅ Store using upsert
+            operation_result = self.client.upsert(
+                collection_name=self.collection_name,
+                points=[point]
+            )
+            
+            logger.info(f"✅ Memory stored successfully: {memory_id}")
             return True
             
         except Exception as e:
-            logger.error(f"❌ Failed to store memory {memory_data['id']}: {e}")
-            logger.error(f"Error type: {type(e)}")
+            logger.error(f"❌ Failed to store memory {memory_data.get('id', 'unknown')}: {e}")
+            logger.error(f"🔍 Error type: {type(e)}")
             
-            # Try alternative format
-            try:
-                logger.info("Trying alternative storage format...")
+            # ✅ Detailed error info
+            if hasattr(e, 'status_code'):
+                logger.error(f"🔍 HTTP Status: {e.status_code}")
+            if hasattr(e, 'content'):
+                logger.error(f"🔍 Response: {e.content}")
                 
-                # Alternative: Use numeric ID
-                numeric_id = abs(hash(memory_data["id"])) % (10**6)  # Convert to numeric
-                
-                alt_points = [
-                    {
-                        "id": numeric_id,
-                        "payload": {
-                            **memory_data["metadata"],
-                            "original_id": memory_data["id"]  # Keep original ID in payload
-                        },
-                        "vector": memory_data["vector"]
-                    }
-                ]
-                
-                self.client.upsert(
-                    collection_name=self.collection_name,
-                    points=alt_points
-                )
-                
-                logger.info(f"✅ Memory stored with numeric ID: {numeric_id}")
-                return True
-                
-            except Exception as alt_e:
-                logger.error(f"❌ Alternative storage also failed: {alt_e}")
-                return await self._store_memory_mock(memory_data)
+            # Log the exact data that failed
+            logger.error(f"🔍 Failed data - ID: {memory_data.get('id')}")
+            logger.error(f"🔍 Failed data - Vector type: {type(memory_data.get('vector'))}")
+            logger.error(f"🔍 Failed data - Vector len: {len(memory_data.get('vector', []))}")
+            
+            # Fallback to mock storage
+            return await self._store_memory_mock(memory_data)
     
     async def search_memories(self, 
                             query_vector: List[float],

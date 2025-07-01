@@ -1,14 +1,14 @@
-# app/core/memory/embeddings.py - SAFE INIT VERSION
+# app/core/ai/memory/embeddings.py
 import asyncio
 import logging
 from typing import List, Dict, Optional
 import hashlib
+import uuid
 
 logger = logging.getLogger(__name__)
 
 class EmbeddingService:
     def __init__(self):
-        # ✅ NO INITIALIZATION ON IMPORT
         self.client = None
         self.model = "text-embedding-3-small"  # Default
         self.dimension = 1536  # Default
@@ -100,7 +100,7 @@ class EmbeddingService:
         """
         
         embedding = await self.embed_text(enhanced_text.strip())
-        memory_id = f"{character_id}_{int(timestamp)}_{hashlib.md5(text.encode()).hexdigest()[:8]}"
+        memory_id = str(uuid.uuid4())
         
         return {
             "id": memory_id,
