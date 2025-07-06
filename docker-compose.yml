@@ -5,11 +5,13 @@ services:
     ports:
       - "6333:6333"
     volumes:
-      - qdrant_storage:/qdrant/storage
+      - qdrant_data:/qdrant/storage
     environment:
       - QDRANT__SERVICE__HTTP_PORT=6333
       - QDRANT__SERVICE__GRPC_PORT=6334
     restart: unless-stopped
+    networks:
+      - a2ais-network
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:6333/health || exit 1"]
       interval: 30s
@@ -17,5 +19,57 @@ services:
       retries: 3
       start_period: 40s
 
+  
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: a2ais-postgres
+    environment:
+      POSTGRES_DB: a2ais_db
+      POSTGRES_USER: a2ais_user
+      POSTGRES_PASSWORD: a2ais_password
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    networks:
+      - a2ais-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U a2ais_user -d a2ais_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+    # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: a2ais-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+      - ./config/redis.conf:/usr/local/etc/redis/redis.conf
+    command: redis-server /usr/local/etc/redis/redis.conf
+    networks:
+      - a2ais-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+        
 volumes:
-  qdrant_storage:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  qdrant_data:
+    driver: local
+
+networks:
+  a2ais-network:
+    driver: bridge

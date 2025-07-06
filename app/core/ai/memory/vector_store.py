@@ -1,4 +1,4 @@
-# app/core/ai/memory/vector_store.py - SIMPLE QDRANT FORMAT
+# app/core/ai/memory/vector_store.py
 import asyncio
 import logging
 from typing import List, Dict, Optional, Any
@@ -11,6 +11,10 @@ import uuid
 from app.config.settings import settings
 
 logger = logging.getLogger(__name__)
+
+class VectorStoreError(Exception):
+    """Vector store operation failed"""
+    pass
 
 class MemoryVectorStore:
     def __init__(self):
@@ -40,7 +44,6 @@ class MemoryVectorStore:
             
         except Exception as e:
             logger.error(f"❌ Failed to connect to Qdrant: {e}")
-            logger.warning("Will use mock vector store for development")
             self.client = None
             self._connection_verified = False
             return False
@@ -58,7 +61,6 @@ class MemoryVectorStore:
             try:
                 from qdrant_client.models import VectorParams, Distance
                 
-                # ✅ Recreate with proper params
                 self.client.recreate_collection(
                     collection_name=self.collection_name,
                     vectors_config=VectorParams(
@@ -70,49 +72,38 @@ class MemoryVectorStore:
                 
             except Exception as e:
                 logger.error(f"❌ Collection creation failed: {e}")
-                raise
+                raise VectorStoreError(f"Failed to create collection: {e}")
     
     async def store_memory(self, memory_data: Dict) -> bool:
-        """Store a memory in the vector database"""
+        """Store a memory in the vector database - FAIL FAST"""
         
         if not await self._ensure_connection():
-            logger.warning("Qdrant not available, storing in mock store")
-            return await self._store_memory_mock(memory_data)
+            raise VectorStoreError("Qdrant unavailable - cannot store memory")
         
         try:
-            # ✅ Import at method level to avoid circular imports
             from qdrant_client.models import PointStruct
             
-            # ✅ Extract and validate data
+            # Extract and validate data
             memory_id = str(memory_data["id"])
             vector = memory_data["vector"]
             metadata = memory_data["metadata"]
             
-            # ✅ Vector validation
+            # Vector validation - FAIL FAST
             if not isinstance(vector, list):
-                logger.error(f"❌ Vector must be list, got {type(vector)}")
-                return await self._store_memory_mock(memory_data)
+                raise VectorStoreError(f"Vector must be list, got {type(vector)}")
             
-            # Ensure all values are floats
             vector = [float(x) for x in vector]
             
             if len(vector) != self.dimension:
-                logger.error(f"❌ Vector dimension mismatch: {len(vector)} vs {self.dimension}")
-                return await self._store_memory_mock(memory_data)
+                raise VectorStoreError(f"Vector dimension mismatch: {len(vector)} vs {self.dimension}")
             
-            # ✅ Create point using PointStruct
+            # Create and store point
             point = PointStruct(
                 id=memory_id,
                 vector=vector,
                 payload=metadata
             )
             
-            # ✅ Debug logging
-            logger.debug(f"🔍 Storing point: ID={memory_id}")
-            logger.debug(f"🔍 Vector: len={len(vector)}, sample={vector[:3]}")
-            logger.debug(f"🔍 Payload keys: {list(metadata.keys())}")
-            
-            # ✅ Store using upsert
             operation_result = self.client.upsert(
                 collection_name=self.collection_name,
                 points=[point]
@@ -121,23 +112,11 @@ class MemoryVectorStore:
             logger.info(f"✅ Memory stored successfully: {memory_id}")
             return True
             
+        except VectorStoreError:
+            raise  # Re-raise our custom errors
         except Exception as e:
             logger.error(f"❌ Failed to store memory {memory_data.get('id', 'unknown')}: {e}")
-            logger.error(f"🔍 Error type: {type(e)}")
-            
-            # ✅ Detailed error info
-            if hasattr(e, 'status_code'):
-                logger.error(f"🔍 HTTP Status: {e.status_code}")
-            if hasattr(e, 'content'):
-                logger.error(f"🔍 Response: {e.content}")
-                
-            # Log the exact data that failed
-            logger.error(f"🔍 Failed data - ID: {memory_data.get('id')}")
-            logger.error(f"🔍 Failed data - Vector type: {type(memory_data.get('vector'))}")
-            logger.error(f"🔍 Failed data - Vector len: {len(memory_data.get('vector', []))}")
-            
-            # Fallback to mock storage
-            return await self._store_memory_mock(memory_data)
+            raise VectorStoreError(f"Failed to store memory: {e}")
     
     async def search_memories(self, 
                             query_vector: List[float],
@@ -146,11 +125,10 @@ class MemoryVectorStore:
                             emotion: str = None,
                             limit: int = 5,
                             score_threshold: float = None) -> List[Dict]:
-        """Search for similar memories"""
+        """Search for similar memories - FAIL FAST"""
         
         if not await self._ensure_connection():
-            logger.warning("Qdrant not available, using mock search")
-            return await self._search_memories_mock(query_vector, character_id, topic, limit)
+            raise VectorStoreError("Qdrant unavailable - cannot search memories")
         
         try:
             # Build filter conditions
@@ -180,10 +158,8 @@ class MemoryVectorStore:
                     )
                 )
             
-            # Create filter
             search_filter = Filter(must=must_conditions) if must_conditions else None
             
-            # Search with simpler parameters
             results = self.client.search(
                 collection_name=self.collection_name,
                 query_vector=query_vector,
@@ -193,7 +169,6 @@ class MemoryVectorStore:
                 with_vectors=False
             )
             
-            # Format results
             formatted_results = []
             for result in results:
                 formatted_results.append({
@@ -207,87 +182,28 @@ class MemoryVectorStore:
             
         except Exception as e:
             logger.error(f"❌ Memory search failed: {e}")
-            return []
+            raise VectorStoreError(f"Failed to search memories: {e}")
     
     async def get_character_memory_count(self, character_id: str) -> int:
-        """Get total memory count for a character"""
+        """Get total memory count for a character - FAIL FAST"""
         
         if not await self._ensure_connection():
-            return 0
+            raise VectorStoreError("Qdrant unavailable - cannot count memories")
         
         try:
-            # Simple count without complex filters for now
             info = self.client.get_collection(self.collection_name)
             return info.points_count or 0
             
         except Exception as e:
             logger.error(f"❌ Failed to count memories: {e}")
-            return 0
-    
-    # MOCK METHODS for development without Qdrant
-    
-    def __init_mock_store(self):
-        """Initialize mock store"""
-        if not hasattr(self, '_mock_memories'):
-            self._mock_memories: List[Dict] = []
-    
-    async def _store_memory_mock(self, memory_data: Dict) -> bool:
-        """Mock memory storage"""
-        self.__init_mock_store()
-        
-        # Store in memory list
-        self._mock_memories.append({
-            "id": memory_data["id"],
-            "vector": memory_data["vector"],
-            "payload": memory_data["metadata"]
-        })
-        
-        logger.info(f"📝 Mock stored memory: {memory_data['id']}")
-        return True
-    
-    async def _search_memories_mock(self, 
-                                  query_vector: List[float],
-                                  character_id: str = None,
-                                  topic: str = None,
-                                  limit: int = 5) -> List[Dict]:
-        """Mock memory search"""
-        self.__init_mock_store()
-        
-        if not self._mock_memories:
-            return []
-        
-        # Simple filtering
-        filtered_memories = []
-        for memory in self._mock_memories:
-            payload = memory["payload"]
-            
-            # Apply filters
-            if character_id and payload.get("character_id") != character_id:
-                continue
-            if topic and payload.get("topic") != topic:
-                continue
-                
-            filtered_memories.append(memory)
-        
-        # Simple scoring
-        scored_memories = []
-        for memory in filtered_memories[:limit]:
-            mock_score = 0.8 + (hash(memory["id"]) % 20) / 100
-            
-            scored_memories.append({
-                "score": mock_score,
-                "memory": memory["payload"],
-                "id": memory["id"]
-            })
-        
-        scored_memories.sort(key=lambda x: x["score"], reverse=True)
-        
-        logger.info(f"🔍 Mock search found {len(scored_memories)} memories")
-        return scored_memories[:limit]
+            raise VectorStoreError(f"Failed to count memories: {e}")
     
     async def test_connection(self) -> bool:
         """Test vector store connection"""
-        return await self._ensure_connection()
+        try:
+            return await self._ensure_connection()
+        except Exception:
+            return False
 
 # Global instance
 vector_store = MemoryVectorStore()

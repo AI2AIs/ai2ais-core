@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     WS_PORT: int = 3002
     
     # Database 
-    DATABASE_URL: str = ""
+    DATABASE_URL: str = "postgresql://a2ais_user:a2ais_password@localhost:5432/a2ais_db"
     REDIS_URL: str = ""
     
     # Media
@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     ANTHROPIC_API_KEY: str = ""
     XAI_API_KEY: str = ""    
+    REPLICATE_API_TOKEN: str = ""
 
     # Vector Database
     QDRANT_HOST: str = "localhost"
@@ -40,6 +41,10 @@ class Settings(BaseSettings):
     # Performance
     MEMORY_CACHE_SIZE: int = 100  # Recent memories in RAM
     MEMORY_BATCH_SIZE: int = 10   # Batch processing size
+
+    # Database 
+    DATABASE_URL: str = "postgresql://localhost:5432/a2ais"
+    REDIS_URL: str = "redis://localhost:6379"
     
     class Config:
         env_file = ".env"

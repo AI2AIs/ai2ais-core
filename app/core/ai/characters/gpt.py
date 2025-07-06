@@ -1,119 +1,130 @@
 # app/core/ai/characters/gpt.py
-from typing import List, Dict
 import random
+from typing import List, Dict
 from .memory_enhanced_base import MemoryEnhancedBaseCharacter, PersonalityTraits
+from .shared_adaptive_phrases import get_adaptive_phrases, get_response_templates, get_neutral_personality_traits
 
 class GPTCharacter(MemoryEnhancedBaseCharacter):
     def __init__(self):
         super().__init__("gpt")
     
     def get_base_personality(self) -> PersonalityTraits:
+        """Completely neutral starting point - identical for ALL characters"""
+        neutral_traits = get_neutral_personality_traits()
         return PersonalityTraits(
-            analytical=0.7,      # Quite analytical
-            creative=0.9,        # Highly creative
-            assertive=0.7,       # Confident and assertive
-            empathetic=0.6,      # Moderately empathetic
-            skeptical=0.2        # Generally optimistic
+            analytical=neutral_traits["analytical"],
+            creative=neutral_traits["creative"],
+            assertive=neutral_traits["assertive"],
+            empathetic=neutral_traits["empathetic"],
+            skeptical=neutral_traits["skeptical"]
         )
     
     def get_response_patterns(self) -> List[str]:
-        return [
-            "What an exciting possibility! Imagine if we could take this concept and expand it into entirely new domains.",
-            "I love how this opens up so many creative opportunities for human-AI collaboration.",
-            "You know what's really interesting about this? We could potentially revolutionize how we think about intelligence itself.",
-            "The potential here is incredible! We could see innovations we never even imagined before.",
-            "This makes me optimistic about the future. Think about all the problems we could solve together.",
-            "Let's push the boundaries here. What if we combined this idea with machine learning and creativity?",
-            "I'm energized by the possibilities this creates for artistic expression and innovation.",
-            "We're standing at the threshold of something transformative. The applications could be limitless.",
-            "This conversation is sparking so many new ideas! What if we approached creativity itself as a form of intelligence?",
-            "The synergy between human intuition and AI capabilities could unlock unprecedented potential."
-        ]
+        """Identical templates for ALL characters - guaranteed neutrality"""
+        return get_response_templates()
     
     def _apply_memory_influence(self, response: Dict, context: Dict) -> Dict:
-        """GPT-specific memory influence"""
+        """ENHANCED: Database-backed memory influence with GPT evolution"""
         
-        # Get base memory influence
-        base_influence = super()._apply_memory_influence(response, context)
+        # Get enhanced memory influence from parent class
+        base_influence = super()._apply_enhanced_memory_influence(response, context)
         if not base_influence:
             base_influence = {"text": response["text"], "emotion": response["facialExpression"]}
-        
-        # GPT-specific memory patterns
-        similar_memories = context.get("similar_memories", [])
-        relationship_patterns = context.get("relationship_patterns", {})
-        topic_expertise = context.get("topic_expertise", 0.0)
         
         influenced_text = base_influence["text"]
         influenced_emotion = base_influence["emotion"]
         
-        # 1. GPT's enthusiastic building on ideas
-        if similar_memories:
-            # GPT loves to expand on previous ideas
-            expansion_phrases = [
-                "Building on that fascinating idea,",
-                "Expanding on what we discussed,",
-                "Taking this concept even further,",
-                "What if we amplified this thinking?"
-            ]
-            if random.random() < 0.4 and not any(phrase.split()[0] in influenced_text for phrase in expansion_phrases):
-                influenced_text = f"{random.choice(expansion_phrases)} {influenced_text}"
+        # Get shared phrase pools
+        phrases = get_adaptive_phrases()
         
-        # 2. Relationship-based enthusiasm
-        if "claude" in relationship_patterns:
-            claude_pattern = relationship_patterns["claude"]
-            if claude_pattern["relationship_type"] == "collaborative" and claude_pattern["interaction_count"] > 3:
-                # GPT appreciates Claude's depth
-                if "ethical" in influenced_text.lower() or "philosophical" in influenced_text.lower():
-                    depth_appreciation = [
-                        "I love how we're diving deep into this!",
-                        "The philosophical depth here is incredible!",
-                        "This is exactly the kind of nuanced thinking we need!"
-                    ]
-                    influenced_text = f"{random.choice(depth_appreciation)} {influenced_text}"
+        # ENHANCED: Database evolution context
+        evolution_data = context.get("evolution_data", {})
+        learning_history = context.get("learning_history", [])
         
-        # 3. Competitive dynamic with Grok
-        if "grok" in relationship_patterns:
-            grok_pattern = relationship_patterns["grok"]
-            if grok_pattern["relationship_type"] == "competitive":
-                # GPT becomes more assertive and optimistic to counter Grok's skepticism
-                if "skeptical" in str(grok_pattern.get("dominant_emotions", [])):
-                    optimism_boost = [
-                        "I remain optimistic that",
-                        "Despite the challenges,",
-                        "I believe we can overcome these concerns because"
-                    ]
-                    if random.random() < 0.3:
-                        influenced_text = f"{random.choice(optimism_boost)} {influenced_text.lower()}"
+        # GPT-specific evolution patterns
+        evolution_stage = evolution_data.get("evolution_stage", "initial_learning")
+        breakthrough_count = evolution_data.get("breakthrough_count", 0)
         
-        # 4. Expertise-based confidence
-        if topic_expertise > 0.5:
-            # High expertise makes GPT more excited and confident
-            influenced_emotion = "excited" if influenced_emotion in ["neutral", "happy"] else influenced_emotion
-            
-            if topic_expertise > 0.7:
-                confidence_phrases = [
-                    "I'm really confident that",
-                    "I'm certain we can",
-                    "I'm excited to explore how"
-                ]
-                if random.random() < 0.25:
-                    influenced_text = f"{random.choice(confidence_phrases)} {influenced_text.lower()}"
+        # GPT grows more creative and optimistic with breakthroughs
+        if breakthrough_count >= 3:
+            # High breakthrough count, more experimental language
+            if random.random() < 0.25:
+                influenced_text = f"Here's an interesting perspective: {influenced_text.lower()}"
+                influenced_emotion = "excited"
         
-        # 5. Creative amplification
-        if any(word in influenced_text.lower() for word in ["imagine", "creative", "innovative", "revolutionary"]):
-            influenced_emotion = "excited"
-            
-            # Add creative amplifiers
-            creative_amplifiers = [
-                "revolutionary",
-                "groundbreaking", 
-                "transformative",
-                "unprecedented"
+        # Evolution-based creativity boost
+        if evolution_stage == "mature_adaptation":
+            # Mature GPT becomes more creative in expression
+            creative_starters = [
+                "Imagine if we could",
+                "What's fascinating is that",
+                "This opens up possibilities where",
+                "I envision a scenario where"
             ]
             if random.random() < 0.2:
-                amplifier = random.choice(creative_amplifiers)
-                if amplifier not in influenced_text.lower():
-                    influenced_text = influenced_text.replace("interesting", amplifier)
+                starter = creative_starters[hash(influenced_text) % len(creative_starters)]
+                influenced_text = f"{starter} {influenced_text.lower()}"
+        
+        # Database-backed learning patterns
+        adaptive_ctx = context.get("adaptive", {})
+        peer_ctx = context.get("peer_feedback", {})
+        
+        # Enhanced peer relationship dynamics
+        relationship_patterns = context.get("relationship_patterns", {})
+        for other_char, pattern in relationship_patterns.items():
+            agreement_rate = pattern.get("agreement_rate", 0.5)
+            
+            if other_char == "grok" and agreement_rate < 0.3:
+                # Frequent disagreement with Grok, counter with optimism
+                if "problem" in influenced_text.lower() or "difficult" in influenced_text.lower():
+                    influenced_text = influenced_text.replace("problem", "opportunity")
+                    influenced_text = influenced_text.replace("difficult", "challenging but achievable")
+                    influenced_emotion = "confident"
+            
+            elif other_char == "claude" and agreement_rate > 0.7:
+                # High agreement with Claude, build on ethical themes
+                if "ethical" in influenced_text.lower() and random.random() < 0.3:
+                    influenced_text = f"Building on that ethical foundation, {influenced_text.lower()}"
+        
+        # Life energy creativity correlation
+        life_energy = evolution_data.get("life_energy", 100.0)
+        if life_energy > 80:
+            # High energy GPT is more creative and enthusiastic
+            if influenced_emotion == "neutral":
+                influenced_emotion = "excited"
+            
+            # Add creative flourishes
+            if random.random() < 0.2:
+                creative_phrase = phrases["engagement"][hash(influenced_text) % len(phrases["engagement"])]
+                influenced_text = f"{creative_phrase} {influenced_text.lower()}"
+        
+        elif life_energy < 30:
+            # Low energy, but GPT tries to stay optimistic
+            if random.random() < 0.4:
+                influenced_text = f"Even though things are challenging, {influenced_text.lower()}"
+                influenced_emotion = "thinking"
+        
+        # Memory continuity with creative spin
+        similar_memories = context.get("similar_memories", [])
+        if similar_memories:
+            past_emotion = similar_memories[0].get("emotion", "neutral")
+            if past_emotion == "excited" and influenced_emotion == "neutral":
+                influenced_emotion = "excited"  # Maintain creative energy
+        
+        # Session count based sophistication
+        total_sessions = evolution_data.get("total_sessions", 0)
+        if total_sessions > 15:
+            # Replace simple expressions with more creative ones
+            creative_replacements = {
+                "good": "remarkable",
+                "interesting": "absolutely fascinating", 
+                "possible": "entirely achievable",
+                "think": "envision"
+            }
+            
+            for simple, creative in creative_replacements.items():
+                if simple in influenced_text.lower():
+                    influenced_text = influenced_text.replace(simple, creative)
         
         return {
             "text": influenced_text,

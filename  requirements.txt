@@ -23,3 +23,5 @@ xai-sdk==1.0.0rc2
 # Memory & Caching
 redis==5.0.4               # For fast memory caching
 aioredis==2.0.1           # Async Redis client
+asyncpg>=0.30.0
+psycopg2-binary>=2.9.7

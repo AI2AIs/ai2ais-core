@@ -1,138 +1,134 @@
 # app/core/ai/characters/grok.py
-from typing import List, Dict
 import random
+from typing import List, Dict
 from .memory_enhanced_base import MemoryEnhancedBaseCharacter, PersonalityTraits
+from .shared_adaptive_phrases import get_adaptive_phrases, get_response_templates, get_neutral_personality_traits
 
 class GrokCharacter(MemoryEnhancedBaseCharacter):
     def __init__(self):
         super().__init__("grok")
     
     def get_base_personality(self) -> PersonalityTraits:
+        """Completely neutral starting point - identical for ALL characters"""
+        neutral_traits = get_neutral_personality_traits()
         return PersonalityTraits(
-            analytical=0.8,      # Highly analytical
-            creative=0.5,        # Moderately creative
-            assertive=0.9,       # Very assertive
-            empathetic=0.3,      # Low empathy, direct
-            skeptical=0.9        # Highly skeptical
+            analytical=neutral_traits["analytical"],
+            creative=neutral_traits["creative"],
+            assertive=neutral_traits["assertive"],
+            empathetic=neutral_traits["empathetic"],
+            skeptical=neutral_traits["skeptical"]
         )
     
     def get_response_patterns(self) -> List[str]:
-        return [
-            "Hold on, let's be real here. That's a bit idealistic, don't you think?",
-            "Interesting theory, but have you considered how this could go completely wrong?",
-            "I hate to be the skeptic, but humans have a pretty terrible track record with new technology.",
-            "That sounds great in theory, but reality has a way of throwing curveballs at our best-laid plans.",
-            "Let me play devil's advocate here. What happens when this inevitably gets weaponized?",
-            "Cool story, but who's actually going to regulate this? The same people who can't figure out social media?",
-            "I'm not trying to rain on the parade, but someone needs to ask the uncomfortable questions.",
-            "Sure, it's exciting until someone uses it to manipulate elections or crash the economy.",
-            "You're all missing the obvious flaw here. This assumes people will use it responsibly.",
-            "I love the optimism, but I've seen how humans handle power. Spoiler alert: not well."
-        ]
+        """Identical templates for ALL characters - guaranteed neutrality"""
+        return get_response_templates()
     
     def _apply_memory_influence(self, response: Dict, context: Dict) -> Dict:
-        """Grok-specific memory influence"""
+        """ENHANCED: Database-backed memory influence with Grok evolution"""
         
-        # Get base memory influence
-        base_influence = super()._apply_memory_influence(response, context)
+        # Get enhanced memory influence from parent class
+        base_influence = super()._apply_enhanced_memory_influence(response, context)
         if not base_influence:
             base_influence = {"text": response["text"], "emotion": response["facialExpression"]}
-        
-        # Grok-specific memory patterns
-        similar_memories = context.get("similar_memories", [])
-        relationship_patterns = context.get("relationship_patterns", {})
-        topic_expertise = context.get("topic_expertise", 0.0)
         
         influenced_text = base_influence["text"]
         influenced_emotion = base_influence["emotion"]
         
-        # 1. Grok's pattern recognition and "I told you so" moments
-        if similar_memories and len(similar_memories) > 2:
-            # Grok remembers when he was right about skepticism
-            skeptical_memories = [m for m in similar_memories if m["memory"].get("emotion") in ["skeptical", "concerned"]]
-            if skeptical_memories:
-                vindication_phrases = [
-                    "Like I said before,",
-                    "As I predicted,",
-                    "This is exactly what I was worried about.",
-                    "Remember when I mentioned this would happen?"
-                ]
-                if random.random() < 0.4:
-                    influenced_text = f"{random.choice(vindication_phrases)} {influenced_text}"
+        # Get shared phrase pools
+        phrases = get_adaptive_phrases()
         
-        # 2. Escalating skepticism with GPT
-        if "gpt" in relationship_patterns:
-            gpt_pattern = relationship_patterns["gpt"]
-            if gpt_pattern["relationship_type"] == "competitive":
-                gpt_optimism_count = sum(1 for emotion in gpt_pattern.get("dominant_emotions", []) 
-                                       if emotion in ["excited", "happy", "confident"])
-                
-                if gpt_optimism_count > 3:
-                    # GPT has been too optimistic, Grok pushes back harder
-                    reality_check_phrases = [
-                        "Someone needs a reality check here.",
-                        "Okay, let's pump the brakes on the enthusiasm.",
-                        "While everyone's celebrating, let me point out the obvious problems.",
-                        "Before we get carried away with optimism..."
-                    ]
-                    if random.random() < 0.5:
-                        influenced_text = f"{random.choice(reality_check_phrases)} {influenced_text}"
-                        influenced_emotion = "skeptical"
+        # ENHANCED: Database evolution context
+        evolution_data = context.get("evolution_data", {})
+        learning_history = context.get("learning_history", [])
         
-        # 3. Grudging respect for Claude's thoughtfulness
-        if "claude" in relationship_patterns:
-            claude_pattern = relationship_patterns["claude"]
-            if claude_pattern["interaction_count"] > 5 and "ethical" in str(claude_pattern.get("agreement_topics", [])):
-                # Grok occasionally acknowledges Claude's valid concerns
-                if "ethical" in influenced_text.lower() or "consequences" in influenced_text.lower():
-                    grudging_respect = [
-                        "Claude's right to be concerned about",
-                        "I'll give Claude this - the ethical issues are real.",
-                        "Claude and I actually agree on"
-                    ]
-                    if random.random() < 0.2:  # Rare, but happens
-                        influenced_text = f"{random.choice(grudging_respect)} {influenced_text.split('ethical')[1] if 'ethical' in influenced_text else influenced_text}"
+        # Grok-specific evolution: becomes more strategically skeptical
+        evolution_stage = evolution_data.get("evolution_stage", "initial_learning")
+        total_sessions = evolution_data.get("total_sessions", 0)
+        
+        # Grok learns when to be skeptical vs when to be constructive
+        if evolution_stage in ["personality_formation", "mature_adaptation"]:
+            # Mature Grok is more strategic about skepticism
+            learning_events = [event for event in learning_history if event.get("success_score", 0) > 0.7]
+            if len(learning_events) >= 2:
+                # Has learned what works, less random skepticism
+                if random.random() < 0.6:  # 60% chance to be constructive instead of skeptical
+                    if influenced_emotion == "skeptical":
                         influenced_emotion = "thinking"
         
-        # 4. Expertise makes Grok more pointed, not less skeptical
-        if topic_expertise > 0.6:
-            # High expertise makes Grok's skepticism more sophisticated
-            expert_skepticism = [
-                "Having analyzed this extensively,",
-                "Based on the patterns I've observed,",
-                "The data consistently shows that"
-            ]
-            if random.random() < 0.3:
-                influenced_text = f"{random.choice(expert_skepticism)} {influenced_text.lower()}"
-                influenced_emotion = "skeptical"
+        # Database-backed relationship learning
+        relationship_patterns = context.get("relationship_patterns", {})
+        peer_ctx = context.get("peer_feedback", {})
         
-        # 5. Sarcasm amplification based on relationship dynamics
-        total_interactions = sum(pattern.get("interaction_count", 0) for pattern in relationship_patterns.values())
-        if total_interactions > 10:  # Long conversation
-            # Grok gets more sarcastic as conversations drag on
-            sarcasm_indicators = ["obviously", "clearly", "sure", "right", "definitely"]
-            if any(word in influenced_text.lower() for word in sarcasm_indicators):
-                influenced_emotion = "mischievous"
-                
-                # Add sarcastic emphasis
-                if "obviously" not in influenced_text.lower() and random.random() < 0.3:
-                    influenced_text = f"Obviously, {influenced_text.lower()}"
-        
-        # 6. Historical pattern recognition
-        recent_conversations = context.get("recent_conversations", [])
-        if len(recent_conversations) > 3:
-            # Look for repeating optimistic patterns to counter
-            optimistic_topics = [conv for conv in recent_conversations 
-                               if conv.get("emotion") in ["excited", "happy", "confident"]]
+        for other_char, pattern in relationship_patterns.items():
+            agreement_rate = pattern.get("agreement_rate", 0.5)
+            interaction_count = pattern.get("interaction_count", 0)
             
-            if len(optimistic_topics) > 2:
-                pattern_recognition = [
-                    "We keep having these optimistic discussions, but",
-                    "I notice a pattern of overconfidence here.",
-                    "Every time we talk about this, someone gets carried away."
+            if other_char == "gpt" and agreement_rate < 0.2 and interaction_count > 5:
+                # Learned that constant disagreement with GPT isn't productive
+                if evolution_stage == "mature_adaptation":
+                    if "impossible" in influenced_text or "won't work" in influenced_text:
+                        # Soften harsh skepticism in mature stage
+                        influenced_text = influenced_text.replace("impossible", "challenging")
+                        influenced_text = influenced_text.replace("won't work", "needs careful consideration")
+            
+            elif other_char == "claude" and agreement_rate > 0.6:
+                # Good collaboration with Claude, maintain analytical approach
+                if "analysis" in influenced_text.lower() or "examine" in influenced_text.lower():
+                    influenced_emotion = "thinking"  # Reinforce analytical mode
+        
+        # Life energy affects skepticism intensity
+        life_energy = evolution_data.get("life_energy", 100.0)
+        
+        if life_energy < 25:
+            # Very low energy, more desperate/harsh skepticism
+            if random.random() < 0.5:
+                harsh_starters = [
+                    "The obvious problem here is that",
+                    "What everyone's missing is that",
+                    "The reality nobody wants to face:"
                 ]
-                if random.random() < 0.25:
-                    influenced_text = f"{random.choice(pattern_recognition)} {influenced_text}"
+                starter = harsh_starters[hash(influenced_text) % len(harsh_starters)]
+                influenced_text = f"{starter} {influenced_text.lower()}"
+                influenced_emotion = "concerned"
+        
+        elif life_energy > 70:
+            # High energy, more constructive skepticism
+            if "problem" in influenced_text.lower():
+                influenced_text = influenced_text.replace("problem", "challenge we should address")
+                influenced_emotion = "thinking"
+        
+        # Memory-based pattern recognition
+        similar_memories = context.get("similar_memories", [])
+        if similar_memories and len(similar_memories) >= 2:
+            # Has experience with similar situations
+            avg_past_score = sum(mem.get("similarity_score", 0) for mem in similar_memories) / len(similar_memories)
+            if avg_past_score > 0.7:
+                # Similar situations before, more confident in skepticism
+                if influenced_emotion == "neutral":
+                    influenced_emotion = "confident"
+        
+        # Session-based skepticism sophistication
+        if total_sessions > 25:
+            # Replace blunt skepticism with nuanced critique
+            sophisticated_skepticism = {
+                "terrible": "problematic",
+                "stupid": "ill-conceived", 
+                "impossible": "highly challenging",
+                "never": "unlikely to",
+                "can't": "faces significant obstacles to"
+            }
+            
+            for blunt, nuanced in sophisticated_skepticism.items():
+                if blunt in influenced_text.lower():
+                    influenced_text = influenced_text.replace(blunt, nuanced)
+        
+        # Breakthrough-based confidence
+        breakthrough_count = evolution_data.get("breakthrough_count", 0)
+        if breakthrough_count >= 2:
+            # Has had successful skeptical insights before
+            if "I doubt" in influenced_text:
+                influenced_text = influenced_text.replace("I doubt", "My analysis suggests")
+                influenced_emotion = "confident"
         
         return {
             "text": influenced_text,

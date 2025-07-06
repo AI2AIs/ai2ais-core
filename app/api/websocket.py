@@ -1,4 +1,7 @@
-# app/api/websocket.py 
+# app/api/websocket.py
+"""
+Enhanced WebSocket with Database-Backed AI-to-AI Feedback
+"""
 
 import uuid
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
@@ -9,7 +12,9 @@ import logging
 import time
 import os
 
+# UPDATED IMPORTS - Enhanced Memory
 from app.core.ai.characters import get_character
+from app.core.database.service import db_service
 
 # Logger setup
 logger = logging.getLogger(__name__)
@@ -17,7 +22,7 @@ logger = logging.getLogger(__name__)
 # WebSocket router
 websocket_router = APIRouter()
 
-# Connection manager
+# Connection manager - SAME
 class ConnectionManager:
     def __init__(self):
         self.active_connections: List[WebSocket] = []
@@ -61,20 +66,21 @@ class ConnectionManager:
 # Global connection manager
 manager = ConnectionManager()
 
-# AI Response Storage for peer feedback
-class AIResponseTracker:
+# ENHANCED AI Response Storage with Database Persistence
+class EnhancedAIResponseTracker:
     def __init__(self):
         self.session_responses: Dict[str, List[Dict]] = {}
         self.character_instances: Dict[str, object] = {}
     
     def get_or_create_character(self, character_id: str):
-        """Get or create character instance"""
+        """Get or create enhanced character instance"""
         if character_id not in self.character_instances:
             self.character_instances[character_id] = get_character(character_id)
         return self.character_instances[character_id]
     
-    def add_response(self, session_id: str, character_id: str, response_data: Dict):
-        """Add a response to session tracking"""
+    async def add_response_with_persistence(self, session_id: str, character_id: str, response_data: Dict):
+        """Add response with database persistence"""
+        
         if session_id not in self.session_responses:
             self.session_responses[session_id] = []
         
@@ -84,15 +90,38 @@ class AIResponseTracker:
             "timestamp": time.time()
         })
         
-        logger.info(f"📝 Tracked response from {character_id} in session {session_id}")
+        # ENHANCED: Store in database via enhanced memory
+        try:
+            character = self.get_or_create_character(character_id)
+            await character.initialize_memory()
+            
+            # Store conversation in enhanced memory (handles Qdrant + PostgreSQL)
+            memory_id = await character.enhanced_memory.store_conversation_memory(
+                session_id=session_id,
+                speech_text=response_data["text"],
+                emotion=response_data["facialExpression"],
+                duration=response_data.get("duration", 3.0),
+                voice_config=response_data.get("voice_config", {}),
+                context={
+                    "triggered_by": response_data.get("triggered_by", "manual"),
+                    "round_number": response_data.get("round_number"),
+                    "generation_time_ms": response_data.get("generation_time_ms")
+                }
+            )
+            
+            if memory_id:
+                logger.info(f"💾 Stored response in enhanced memory: {memory_id}")
+                
+        except Exception as e:
+            logger.error(f"❌ Failed to store response in enhanced memory: {e}")
     
-    async def process_peer_feedback(self, session_id: str, new_response: Dict):
-        """Process peer feedback for all characters"""
+    async def process_enhanced_peer_feedback(self, session_id: str, new_response: Dict):
+        """Process peer feedback with database persistence"""
         
         if session_id not in self.session_responses:
             return
         
-        recent_responses = self.session_responses[session_id][-5:]  # Last 5 responses
+        recent_responses = self.session_responses[session_id][-5:]
         new_character_id = new_response["character_id"]
         
         # Get all other characters who need to analyze this response
@@ -101,65 +130,128 @@ class AIResponseTracker:
         
         peer_reactions = []
         
-        for other_character_id in set(other_characters):  # Remove duplicates
+        for other_character_id in set(other_characters):
             try:
                 character = self.get_or_create_character(other_character_id)
                 await character.initialize_memory()
                 
-                # Each character analyzes the new response
+                # ENHANCED: Get relationship context from database
+                relationship_context = await character.enhanced_memory.get_relationship_patterns(new_character_id)
+                
+                # Each character analyzes the new response with enhanced context
                 reaction = await character.analyze_peer_response(
                     peer_character_id=new_character_id,
                     peer_response_text=new_response["response_data"]["text"],
                     peer_emotion=new_response["response_data"]["facialExpression"],
-                    topic="artificial consciousness and the future of AI",  # Current topic
-                    context={"session_id": session_id}
+                    topic="artificial consciousness and the future of AI",
+                    context={
+                        "session_id": session_id,
+                        "relationship_context": relationship_context
+                    }
                 )
                 
                 peer_reactions.append(reaction)
                 
-                logger.info(f"🔍 {other_character_id} analyzed {new_character_id}: "
+                # ENHANCED: Store peer reaction in database
+                await self._store_peer_reaction_in_database(
+                    analyzer_id=other_character_id,
+                    target_id=new_character_id,
+                    session_id=session_id,
+                    reaction=reaction
+                )
+                
+                logger.info(f"🔍 Enhanced analysis: {other_character_id} → {new_character_id}: "
                            f"engagement={reaction.engagement_level:.2f}, "
                            f"should_respond={reaction.should_respond}")
                 
             except Exception as e:
-                logger.error(f"❌ Failed peer analysis {other_character_id} -> {new_character_id}: {e}")
+                logger.error(f"❌ Failed enhanced peer analysis {other_character_id} → {new_character_id}: {e}")
         
-        # Send peer feedback to the character who just responded
+        # Send enhanced peer feedback
         if peer_reactions:
             try:
                 character = self.get_or_create_character(new_character_id)
                 await character.receive_peer_feedback(peer_reactions)
                 
-                # Trigger follow-up responses based on peer reactions
-                await self.trigger_follow_up_responses(session_id, peer_reactions)
+                # ENHANCED: Update relationship patterns in database
+                await self._update_relationship_patterns(new_character_id, peer_reactions)
+                
+                # Trigger follow-up responses with enhanced logic
+                await self.trigger_enhanced_follow_up_responses(session_id, peer_reactions)
                 
             except Exception as e:
-                logger.error(f"❌ Failed to process peer feedback for {new_character_id}: {e}")
+                logger.error(f"❌ Failed to process enhanced peer feedback for {new_character_id}: {e}")
     
-    async def trigger_follow_up_responses(self, session_id: str, peer_reactions: List):
-        """Trigger follow-up responses from characters who want to respond"""
+    async def _store_peer_reaction_in_database(self, analyzer_id: str, target_id: str, session_id: str, reaction):
+        """Store peer reaction in database for relationship tracking"""
+        
+        try:
+            await db_service.record_learning_event(
+                character_id=analyzer_id,
+                session_id=session_id,
+                event_type="peer_analysis",
+                context_data={
+                    "target_character": target_id,
+                    "engagement_level": reaction.engagement_level,
+                    "agreement_level": reaction.agreement_level,
+                    "should_respond": reaction.should_respond,
+                    "emotional_response": reaction.emotional_response
+                },
+                success_score=reaction.get_overall_quality_score()
+            )
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to store peer reaction in database: {e}")
+    
+    async def _update_relationship_patterns(self, character_id: str, peer_reactions: List):
+        """Update relationship patterns based on peer reactions"""
+        
+        try:
+            character = self.get_or_create_character(character_id)
+            
+            for reaction in peer_reactions:
+                # Update relationship metrics
+                relationship_data = await character.enhanced_memory.get_relationship_patterns(
+                    reaction.analyzer_character
+                )
+                
+                # This would update the character_relationships table
+                # Implementation depends on how you want to calculate relationship changes
+                
+        except Exception as e:
+            logger.error(f"❌ Failed to update relationship patterns: {e}")
+    
+    async def trigger_enhanced_follow_up_responses(self, session_id: str, peer_reactions: List):
+        """Trigger follow-up responses with enhanced relationship awareness"""
         
         for reaction in peer_reactions:
             if reaction.should_respond and reaction.engagement_level > 0.6:
-                # This character wants to respond with high engagement
                 responding_character_id = reaction.analyzer_character
                 
-                logger.info(f"🎤 Triggering follow-up response from {responding_character_id}")
+                logger.info(f"🎤 Triggering enhanced follow-up response from {responding_character_id}")
                 
-                # Trigger response generation in background
+                # ENHANCED: Trigger with relationship context
                 asyncio.create_task(
-                    generate_ai_response(session_id, responding_character_id, peer_triggered=True)
+                    generate_enhanced_ai_response(
+                        session_id, 
+                        responding_character_id, 
+                        peer_triggered=True,
+                        trigger_reaction=reaction
+                    )
                 )
                 
                 # Add delay to prevent simultaneous responses
                 await asyncio.sleep(2.0)
 
-# Global response tracker
-response_tracker = AIResponseTracker()
+# Global enhanced response tracker
+enhanced_response_tracker = EnhancedAIResponseTracker()
 
-# Main AI response generation with full peer feedback
-async def generate_ai_response(session_id: str, character_id: str, peer_triggered: bool = False):
-    """Generate AI response with FULL AI-to-AI feedback system"""
+# ENHANCED AI response generation
+async def generate_enhanced_ai_response(session_id: str, 
+                                      character_id: str, 
+                                      peer_triggered: bool = False,
+                                      trigger_reaction = None):
+    """Generate AI response with enhanced memory and database persistence"""
 
     request_key = f"{session_id}:{character_id}"
     if request_key in active_requests:
@@ -170,37 +262,38 @@ async def generate_ai_response(session_id: str, character_id: str, peer_triggere
 
     try:
         trigger_type = "peer-triggered" if peer_triggered else "manual"
-        logger.info(f"🤖 Generating ADAPTIVE response for {character_id} ({trigger_type})")
+        logger.info(f"🤖 Generating ENHANCED response for {character_id} ({trigger_type})")
         
-        # Get character instance
-        character = response_tracker.get_or_create_character(character_id)
+        # Get enhanced character instance
+        character = enhanced_response_tracker.get_or_create_character(character_id)
         await character.initialize_memory()
         
-        # Start session tracking for adaptive learning
+        # Start session tracking
         character.start_session(session_id)
         
         topic = "artificial consciousness and the future of AI"
         
-        # Enhanced context with other participants for relationship tracking
+        # ENHANCED: Build context with database + memory
         other_participants = [
             cid for cid in ["claude", "gpt", "grok"] 
             if cid != character_id
         ]
         
-        context = {
+        enhanced_context = {
             "other_participants": other_participants,
             "session_id": session_id,
             "session_type": "autonomous_debate",
-            "peer_triggered": peer_triggered
+            "peer_triggered": peer_triggered,
+            "trigger_reaction": trigger_reaction.__dict__ if trigger_reaction else None
         }
         
-        # Generate character response with adaptive + peer feedback
-        response_data = await character.generate_response(topic, context)
+        # Generate enhanced character response
+        response_data = await character.generate_response(topic, enhanced_context)
         
         print(f"💬 {character_id} ({trigger_type}): {response_data['text'][:100]}...")
-        print(f"🎯 Adaptive: {response_data.get('adaptive_metadata', {})}")
+        print(f"🎯 Enhanced metadata: {response_data.get('enhanced_metadata', {})}")
         
-        # TTS + Lip-sync generation
+        # TTS + Lip-sync generation (SAME AS BEFORE)
         try:
             from app.core.media.tts.google_tts import tts_service
             from app.core.media.tts.lip_sync import lip_sync_generator
@@ -221,7 +314,7 @@ async def generate_ai_response(session_id: str, character_id: str, peer_triggere
                 final_duration = tts_result.get("duration", response_data.get("duration", 3.0))
                 final_audio_base64 = tts_result["audioBase64"]
             else:
-                # Fallback
+                # Fallback (same as before)
                 tts_result_fallback = await tts_service.generate_speech(
                     text=response_data["text"],
                     character_id=character_id,
@@ -245,7 +338,7 @@ async def generate_ai_response(session_id: str, character_id: str, peer_triggere
                 "mouthCues": [{"start": 0.0, "end": final_duration, "value": "A"}]
             }
         
-        # Enhanced message with AI-to-AI feedback metadata
+        # ENHANCED: Complete message with database metadata
         complete_message = {
             "id": str(uuid.uuid4()),
             "sessionId": session_id,
@@ -256,19 +349,21 @@ async def generate_ai_response(session_id: str, character_id: str, peer_triggere
             "duration": final_duration,
             "timestamp": int(time.time() * 1000),
             
-            # Audio/TTS fields
+            # Audio/TTS fields (SAME)
             "audioBase64": final_audio_base64,
             "lipSync": lip_sync_result,
             "audioUrl": None,
             
-            # AI-to-AI feedback metadata
+            # ENHANCED: Database-backed metadata
+            "enhancedMetadata": response_data.get("enhanced_metadata", {}),
             "adaptiveMetadata": response_data.get("adaptive_metadata", {}),
             "aiToAiMetadata": {
                 "triggerType": trigger_type,
                 "peerTriggered": peer_triggered,
-                "evolutionStage": character._determine_evolution_stage(),
-                "sessionsCompleted": len(character.adaptive_traits.recent_feedback),
-                "peerFeedbackScore": character.calculate_peer_feedback_score() if character._pending_peer_reactions else None
+                "evolutionStage": response_data.get("enhanced_metadata", {}).get("evolution_stage", "initial_learning"),
+                "lifeEnergy": response_data.get("enhanced_metadata", {}).get("life_energy", 100.0),
+                "maturityLevel": response_data.get("enhanced_metadata", {}).get("maturity_level", 1),
+                "memorySystem": "enhanced_hybrid"
             },
             
             # Existing fields
@@ -277,26 +372,28 @@ async def generate_ai_response(session_id: str, character_id: str, peer_triggere
             "resetExpressionAfter": True,
         }
 
-        # Add to response tracking for peer feedback
-        response_tracker.add_response(session_id, character_id, complete_message)
+        # ENHANCED: Add to response tracking with persistence
+        await enhanced_response_tracker.add_response_with_persistence(
+            session_id, character_id, complete_message
+        )
         
-        # Process peer feedback asynchronously
+        # ENHANCED: Process peer feedback with database
         asyncio.create_task(
-            response_tracker.process_peer_feedback(session_id, {
+            enhanced_response_tracker.process_enhanced_peer_feedback(session_id, {
                 "character_id": character_id,
                 "response_data": complete_message
             })
         )
         
-        # End session with peer feedback (will use peer scores automatically)
-        await character.end_session_with_feedback(
+        # ENHANCED: End session with database persistence
+        await character.end_session_with_database_persistence(
             session_id=session_id,
             other_participants=other_participants,
             topic=topic,
             response_text=response_data["text"]
         )
         
-        # Register with autonomous session manager
+        # Register with autonomous session manager (SAME)
         try:
             from app.core.sessions.autonomous_manager import autonomous_session_manager
             session = autonomous_session_manager.get_session(session_id)
@@ -309,14 +406,14 @@ async def generate_ai_response(session_id: str, character_id: str, peer_triggere
         except Exception as session_error:
             logger.debug(f"No autonomous session found: {session_error}")
         
-        # Print AI-to-AI ecosystem status
-        print(f"🧠 AI-TO-AI ECOSYSTEM STATUS:")
+        # ENHANCED: Print ecosystem status
+        print(f"🧠 ENHANCED AI-TO-AI ECOSYSTEM STATUS:")
         print(f"   Character: {complete_message['characterId']}")
-        print(f"   Trigger: {trigger_type}")
         print(f"   Evolution: {complete_message['aiToAiMetadata']['evolutionStage']}")
-        print(f"   Peer Score: {complete_message['aiToAiMetadata']['peerFeedbackScore']}")
+        print(f"   Life Energy: {complete_message['aiToAiMetadata']['lifeEnergy']}")
+        print(f"   Memory: {complete_message['aiToAiMetadata']['memorySystem']}")
         
-        # Send response message
+        # Send response message (SAME)
         response_message = {
             "type": "new_message",
             "sessionId": session_id,
@@ -328,20 +425,20 @@ async def generate_ai_response(session_id: str, character_id: str, peer_triggere
         
         await manager.send_to_session(session_id, response_message)
         
-        logger.info(f"✅ Complete AI-to-AI response sent for {character_id}")
-        print(f"🚀 {character_id} finished speaking in AI ecosystem!")
+        logger.info(f"✅ Enhanced AI response sent for {character_id}")
+        print(f"🚀 {character_id} finished speaking in ENHANCED AI ecosystem!")
         
     except Exception as e:
-        logger.error(f"❌ AI response generation error for {character_id}: {e}")
+        logger.error(f"❌ Enhanced AI response generation error for {character_id}: {e}")
         import traceback
         traceback.print_exc()
         
-        # Send error message
+        # Send error message (SAME)
         error_message = {
             "type": "error",
             "sessionId": session_id,
             "data": {
-                "error": f"Failed to generate response for {character_id}: {str(e)}"
+                "error": f"Failed to generate enhanced response for {character_id}: {str(e)}"
             },
             "timestamp": int(time.time() * 1000)
         }
@@ -354,20 +451,20 @@ async def generate_ai_response(session_id: str, character_id: str, peer_triggere
     finally:
         active_requests.discard(request_key)
 
-# Character-specific rate limiting (keep existing)
+# Character-specific rate limiting (SAME)
 last_request_time = {}
 active_requests = set()
 
-# WebSocket message handling with AI-to-AI triggers
-async def handle_websocket_message(websocket: WebSocket, session_id: str, data: dict):
-    """Handle incoming WebSocket messages with AI-to-AI functionality"""
+# ENHANCED WebSocket message handling
+async def handle_enhanced_websocket_message(websocket: WebSocket, session_id: str, data: dict):
+    """Handle incoming WebSocket messages with enhanced functionality"""
     message_type = data.get("type")
     
     if message_type == "join_session":
         await websocket.send_json({
             "type": "session_update",
             "sessionId": session_id,
-            "data": {"message": "✅ Joined AI-to-AI ecosystem session"},
+            "data": {"message": "✅ Joined ENHANCED AI-to-AI ecosystem session"},
             "timestamp": time.time()
         })
     
@@ -378,7 +475,7 @@ async def handle_websocket_message(websocket: WebSocket, session_id: str, data: 
             "claude"
         )
         
-        # Rate limiting check
+        # Rate limiting check (SAME)
         now = time.time()
         last_time = last_request_time.get(character_id, 0)
 
@@ -388,31 +485,35 @@ async def handle_websocket_message(websocket: WebSocket, session_id: str, data: 
         
         last_request_time[character_id] = now
 
-        # Create background task for AI response with peer feedback
+        # Create background task for ENHANCED AI response
         asyncio.create_task(
-            generate_ai_response(session_id, character_id, peer_triggered=False)
+            generate_enhanced_ai_response(session_id, character_id, peer_triggered=False)
         )
     
-    elif message_type == "get_ai_ecosystem_status":
-        # Get AI-to-AI ecosystem status
+    elif message_type == "get_enhanced_ecosystem_status":
+        # Get enhanced AI-to-AI ecosystem status
         try:
             ecosystem_status = {}
             for character_id in ["claude", "gpt", "grok"]:
-                character = response_tracker.get_or_create_character(character_id)
+                character = enhanced_response_tracker.get_or_create_character(character_id)
                 await character.initialize_memory()
                 
-                peer_summary = await character.get_peer_feedback_summary()
-                adaptive_summary = character.adaptive_traits.get_adaptation_summary()
+                # ENHANCED: Get comprehensive status from database
+                memory_stats = await character.enhanced_memory.get_memory_stats()
+                evolution_data = await character.enhanced_memory.get_character_evolution_data()
                 
                 ecosystem_status[character_id] = {
-                    "evolution_stage": character._determine_evolution_stage(),
-                    "sessions_completed": len(character.adaptive_traits.recent_feedback),
-                    "peer_feedback": peer_summary,
-                    "adaptive_learning": adaptive_summary
+                    "evolution_stage": evolution_data.get("evolution_stage", "initial_learning"),
+                    "maturity_level": evolution_data.get("maturity_level", 1),
+                    "life_energy": evolution_data.get("life_energy", 100.0),
+                    "total_sessions": evolution_data.get("total_sessions", 0),
+                    "breakthrough_count": evolution_data.get("breakthrough_count", 0),
+                    "memory_stats": memory_stats,
+                    "database_backed": True
                 }
             
             await websocket.send_json({
-                "type": "ai_ecosystem_status",
+                "type": "enhanced_ecosystem_status",
                 "sessionId": session_id,
                 "data": ecosystem_status,
                 "timestamp": time.time()
@@ -421,7 +522,7 @@ async def handle_websocket_message(websocket: WebSocket, session_id: str, data: 
         except Exception as e:
             await websocket.send_json({
                 "type": "error",
-                "error": f"Failed to get ecosystem status: {str(e)}",
+                "error": f"Failed to get enhanced ecosystem status: {str(e)}",
                 "timestamp": time.time()
             })
     
@@ -434,36 +535,38 @@ async def handle_websocket_message(websocket: WebSocket, session_id: str, data: 
     else:
         logger.warning(f"❓ Unknown message type: {message_type}")
 
+# ENHANCED WebSocket endpoints (SAME structure, enhanced functionality)
 @websocket_router.websocket("/ws/{session_id}")
-async def websocket_endpoint(websocket: WebSocket, session_id: str):
+async def enhanced_websocket_endpoint(websocket: WebSocket, session_id: str):
     await manager.connect(websocket, session_id)
     
-    # Send welcome message with AI-to-AI info
+    # Send enhanced welcome message
     await websocket.send_json({
         "type": "session_update",
-        "data": {"message": f"🤖 Connected to AI-to-AI Ecosystem: {session_id}"},
+        "data": {"message": f"🤖 Connected to ENHANCED AI-to-AI Ecosystem: {session_id}"},
+        "enhanced": True,
         "timestamp": time.time()
     })
     
     try:
         while True:
             data = await websocket.receive_json()
-            logger.info(f"📨 Received: {data}")
+            logger.info(f"📨 Received enhanced message: {data}")
             
-            await handle_websocket_message(websocket, session_id, data)
+            await handle_enhanced_websocket_message(websocket, session_id, data)
             
     except WebSocketDisconnect:
         await manager.disconnect(websocket, session_id)
     except Exception as e:
-        logger.error(f"❌ WebSocket error: {e}")
+        logger.error(f"❌ Enhanced WebSocket error: {e}")
         await manager.disconnect(websocket, session_id)
 
 @websocket_router.websocket("/ws")
-async def websocket_root(websocket: WebSocket):
-    """Root WebSocket endpoint"""
-    await websocket_endpoint(websocket, "ai-ecosystem-demo")
+async def enhanced_websocket_root(websocket: WebSocket):
+    """Enhanced root WebSocket endpoint"""
+    await enhanced_websocket_endpoint(websocket, "enhanced-ai-ecosystem-demo")
 
 @websocket_router.websocket("/")
-async def websocket_root_alternative(websocket: WebSocket):
-    """Alternative root WebSocket endpoint"""
-    await websocket_endpoint(websocket, "ai-ecosystem-demo")
+async def enhanced_websocket_root_alternative(websocket: WebSocket):
+    """Enhanced alternative root WebSocket endpoint"""
+    await enhanced_websocket_endpoint(websocket, "enhanced-ai-ecosystem-demo")
