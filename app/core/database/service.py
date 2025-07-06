@@ -11,7 +11,7 @@ import json
 import uuid
 import time
 from typing import Dict, List, Optional, Any, AsyncGenerator
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta
 from contextlib import asynccontextmanager
 from enum import Enum
 
@@ -44,6 +44,7 @@ class DatabaseService:
     def __init__(self):
         self.db_url = settings.DATABASE_URL
         self.pool: Optional[asyncpg.Pool] = None
+        self._connected = False
         self.state = ServiceState.UNINITIALIZED
         
         # Thread safety
@@ -333,7 +334,7 @@ class DatabaseService:
                     WHERE character_id = ${len(values) + 2}
                 """
                 
-                values.extend([datetime.now(timezone.utc), character_id])
+                values.extend([datetime.now(), character_id])
                 
                 result = await conn.execute(sql, *values)
                 self._query_count += 1
@@ -387,13 +388,13 @@ class DatabaseService:
                         UPDATE character_evolution 
                         SET evolution_stage = $1, maturity_level = $2, updated_at = $3
                         WHERE character_id = $4
-                    """, new_stage, maturity_level, datetime.now(timezone.utc), character_id)
+                    """, new_stage, maturity_level, datetime.now(), character_id)
                 else:
                     result = await conn.execute("""
                         UPDATE character_evolution 
                         SET evolution_stage = $1, updated_at = $2
                         WHERE character_id = $3
-                    """, new_stage, datetime.now(timezone.utc), character_id)
+                    """, new_stage, datetime.now(), character_id)
                 
                 self._query_count += 1
                 rows_affected = self._parse_update_result(result)
@@ -444,7 +445,7 @@ class DatabaseService:
                         END,
                         updated_at = $4
                     WHERE character_id = $5
-                """, sessions, speeches, breakthroughs, datetime.now(timezone.utc), character_id)
+                """, sessions, speeches, breakthroughs, datetime.now(), character_id)
                 
                 self._query_count += 1
                 rows_affected = self._parse_update_result(result)
@@ -532,7 +533,7 @@ class DatabaseService:
                     updated_at = $2
                 WHERE character_id = $3
                 RETURNING life_energy
-            """, energy_delta, datetime.now(timezone.utc), character_id)
+            """, energy_delta, datetime.now(), character_id)
             
             if not result:
                 return None
@@ -584,7 +585,7 @@ class DatabaseService:
                     return {"status": "not_found", "character_id": character_id}
                 
                 # Calculate energy decay
-                now = datetime.now(timezone.utc)
+                now = datetime.now()
                 last_update = char_data['last_energy_update']
                 
                 # Handle timezone-naive datetime from database
@@ -679,9 +680,9 @@ class DatabaseService:
             async with self.get_connection() as conn:
                 await conn.execute("""
                     INSERT INTO autonomous_sessions (
-                        session_id, topic, participants_json, max_rounds, started_at
-                    ) VALUES ($1, $2, $3, $4, $5)
-                """, session_id, topic, json.dumps(participants), max_rounds, datetime.now(timezone.utc))
+                        session_id, topic, participants_json, max_rounds
+                    ) VALUES ($1, $2, $3, $4)
+                """, session_id, topic, json.dumps(participants), max_rounds)
                 
                 self._query_count += 1
                 logger.info(f"✅ Created session: {session_id}")
@@ -748,7 +749,7 @@ class DatabaseService:
                 kwargs.get('triggered_by'),
                 kwargs.get('generation_time_ms'),
                 kwargs.get('tts_provider'),
-                datetime.now(timezone.utc)
+                datetime.now()
                 )
                 
                 self._query_count += 1
@@ -823,7 +824,7 @@ class DatabaseService:
                     RETURNING id
                 """, 
                 character_id, session_id, event_type, json.dumps(context_data),
-                qdrant_memory_id, success_score, importance_score, datetime.now(timezone.utc)
+                qdrant_memory_id, success_score, importance_score, datetime.now()
                 )
                 
                 self._query_count += 1
@@ -927,7 +928,7 @@ class DatabaseService:
                     FROM session_speeches 
                     WHERE character_id = $1 
                     AND timestamp > $2
-                """, character_id, datetime.now(timezone.utc) - timedelta(days=7))
+                """, character_id, datetime.now() - timedelta(days=7))
                 
                 # Learning performance (last 30 days)
                 learning_stats = await conn.fetchrow("""
@@ -938,7 +939,7 @@ class DatabaseService:
                     FROM learning_events 
                     WHERE character_id = $1 
                     AND timestamp > $2
-                """, character_id, datetime.now(timezone.utc) - timedelta(days=30))
+                """, character_id, datetime.now() - timedelta(days=30))
                 
                 self._query_count += 3
                 
@@ -952,7 +953,7 @@ class DatabaseService:
                     "character": character_data,
                     "recent_activity": dict(recent_activity) if recent_activity else {},
                     "learning_stats": dict(learning_stats) if learning_stats else {},
-                    "generated_at": datetime.now(timezone.utc).isoformat()
+                    "generated_at": datetime.now().isoformat()
                 }
                 
         except asyncpg.exceptions.PostgresError as e:
@@ -1010,7 +1011,7 @@ class DatabaseService:
                 "response_time_ms": response_time,
                 "pool_info": pool_info,
                 "error_rate": round(error_rate, 4),
-                "last_check": datetime.now(timezone.utc).isoformat()
+                "last_check": datetime.now().isoformat()
             })
             
             self._last_health_check = time.time()
@@ -1019,7 +1020,7 @@ class DatabaseService:
             health_status.update({
                 "status": "unhealthy",
                 "error": str(e),
-                "last_check": datetime.now(timezone.utc).isoformat()
+                "last_check": datetime.now().isoformat()
             })
         
         return health_status

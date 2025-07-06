@@ -1,4 +1,4 @@
-fastapi>=0.104.0
+fastapi>=0.115.14
 uvicorn[standard]>=0.24.0
 uvloop>=0.19.0
 websockets>=12.0
@@ -7,6 +7,7 @@ pydantic-settings>=2.1.0
 python-dotenv>=1.0.0
 aiofiles>=23.2.0
 numpy==1.26.4
+uvloop>=0.21.0
 
 # TTS dependencies
 google-cloud-texttospeech>=2.16.0

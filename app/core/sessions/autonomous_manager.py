@@ -7,6 +7,8 @@ from typing import Dict, List, Optional, Set
 from dataclasses import dataclass
 from enum import Enum
 
+from app.api.websocket import generate_enhanced_ai_response
+
 logger = logging.getLogger(__name__)
 
 class SessionState(Enum):
@@ -194,7 +196,8 @@ class AutonomousSession:
     
     async def _request_character_speech(self, character_id: str):
         """Request a character to speak"""
-        from app.api.websocket import generate_ai_response
+        from app.api.websocket import generate_enhanced_ai_response as generate_ai_response
+
         
         self.current_speaker = character_id
         self.conversation_rounds += 1
@@ -209,7 +212,7 @@ class AutonomousSession:
         self.speech_history.append(temp_speech)
         
         # Start speech generation in background
-        asyncio.create_task(generate_ai_response(self.session_id, character_id))
+        asyncio.create_task(generate_enhanced_ai_response(self.session_id, character_id, peer_triggered=False))
     
     def register_speech_start(self, character_id: str, text: str, duration: float):
         """Register when a character starts speaking"""

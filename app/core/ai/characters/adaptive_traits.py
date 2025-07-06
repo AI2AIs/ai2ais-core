@@ -1,4 +1,4 @@
-# app/core/ai/characters/adaptive_traits.py - ENHANCED VERSION
+# app/core/ai/characters/adaptive_traits.py
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 import time

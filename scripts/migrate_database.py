@@ -61,13 +61,13 @@ class DatabaseMigrator:
             learning_rate FLOAT DEFAULT 0.1,
             adaptation_speed FLOAT DEFAULT 0.3,
             breakthrough_count INTEGER DEFAULT 0,
-            last_breakthrough_at TIMESTAMP,
+            last_breakthrough_at TIMESTAMP WITHOUT TIME ZONE,
             
             -- Survival Mechanics
             life_energy FLOAT DEFAULT 100.0,
             survival_threshold FLOAT DEFAULT 10.0,
             energy_decay_rate FLOAT DEFAULT 0.5,
-            last_energy_update TIMESTAMP DEFAULT NOW(),
+            last_energy_update TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
             
             -- Voice Evolution
             voice_experiments_count INTEGER DEFAULT 0,
@@ -79,8 +79,8 @@ class DatabaseMigrator:
             total_memories INTEGER DEFAULT 0,
             memory_importance_threshold FLOAT DEFAULT 0.7,
             
-            created_at TIMESTAMP DEFAULT NOW(),
-            updated_at TIMESTAMP DEFAULT NOW()
+            created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
+            updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW()
         );
         """
         
@@ -88,7 +88,7 @@ class DatabaseMigrator:
         logger.info("✅ Created character_evolution table")
     
     async def create_character_relationships_table(self):
-        """🆕 Create character_relationships table - MISSING TABLE"""
+        """Create character_relationships table"""
         
         sql = """
         CREATE TABLE IF NOT EXISTS character_relationships (
@@ -112,8 +112,8 @@ class DatabaseMigrator:
             conflict_topics JSON DEFAULT '[]',
             
             -- Temporal Data
-            first_interaction_at TIMESTAMP DEFAULT NOW(),
-            last_interaction_at TIMESTAMP DEFAULT NOW(),
+            first_interaction_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
+            last_interaction_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
             interaction_frequency FLOAT DEFAULT 0.0,  -- interactions per day
             
             -- Behavioral Patterns
@@ -121,8 +121,9 @@ class DatabaseMigrator:
             response_likelihood FLOAT DEFAULT 0.5,
             emotional_compatibility FLOAT DEFAULT 0.5,
             
-            created_at TIMESTAMP DEFAULT NOW(),
-            updated_at TIMESTAMP DEFAULT NOW(),
+            created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
+            updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
+            
             
             FOREIGN KEY (character_a) REFERENCES character_evolution(character_id),
             FOREIGN KEY (character_b) REFERENCES character_evolution(character_id),
@@ -151,7 +152,7 @@ class DatabaseMigrator:
             max_rounds INTEGER DEFAULT 20,
             
             -- Timing
-            started_at TIMESTAMP DEFAULT NOW(),
+            started_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
             ended_at TIMESTAMP,
             total_duration INTEGER,
             
@@ -167,8 +168,8 @@ class DatabaseMigrator:
             social_media_posted BOOLEAN DEFAULT FALSE,
             meme_generated BOOLEAN DEFAULT FALSE,
             
-            created_at TIMESTAMP DEFAULT NOW(),
-            updated_at TIMESTAMP DEFAULT NOW()
+            created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
+            updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW()
         );
         """
         
@@ -208,7 +209,7 @@ class DatabaseMigrator:
             peer_reaction_count INTEGER DEFAULT 0,
             average_peer_engagement FLOAT,
             
-            timestamp TIMESTAMP DEFAULT NOW(),
+            timestamp TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
             
             FOREIGN KEY (session_id) REFERENCES autonomous_sessions(session_id),
             FOREIGN KEY (character_id) REFERENCES character_evolution(character_id)
@@ -253,7 +254,7 @@ class DatabaseMigrator:
             retention_priority INTEGER DEFAULT 5,  -- 1-10 scale
             should_persist BOOLEAN DEFAULT TRUE,
             
-            timestamp TIMESTAMP DEFAULT NOW(),
+            timestamp TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
             
             FOREIGN KEY (character_id) REFERENCES character_evolution(character_id),
             FOREIGN KEY (session_id) REFERENCES autonomous_sessions(session_id)

@@ -1,12 +1,18 @@
 # app/core/ai/characters/grok.py
+import logging
+import time
 import random
 from typing import List, Dict
 from .memory_enhanced_base import MemoryEnhancedBaseCharacter, PersonalityTraits
 from .shared_adaptive_phrases import get_adaptive_phrases, get_response_templates, get_neutral_personality_traits
+from app.core.ai.clients.grok_client import grok_api_client
+
+logger = logging.getLogger(__name__)
 
 class GrokCharacter(MemoryEnhancedBaseCharacter):
     def __init__(self):
         super().__init__("grok")
+        self.api_client = grok_api_client
     
     def get_base_personality(self) -> PersonalityTraits:
         """Completely neutral starting point - identical for ALL characters"""
@@ -23,8 +29,135 @@ class GrokCharacter(MemoryEnhancedBaseCharacter):
         """Identical templates for ALL characters - guaranteed neutrality"""
         return get_response_templates()
     
+    async def _generate_database_backed_response(self, topic: str, context: Dict) -> Dict:
+        """Generate response using REAL xAI API with database-backed personality"""
+        
+        generation_start = time.time()
+        
+        try:
+            # Build evolutionary prompt
+            prompt = self._build_evolutionary_prompt(topic, context)
+            
+            # API call
+            real_text = await self.api_client.generate_response(prompt)
+            
+            # Calculate generation time
+            generation_time = int((time.time() - generation_start) * 1000)
+            
+            # Create base response
+            response = {
+                "text": real_text,
+                "facialExpression": "neutral",
+                "animation": "Talking_1",
+                "duration": round(len(real_text) * 0.05 + 2.0, 2),
+                "generation_time_ms": generation_time,
+                "api_provider": "xai_grok",
+                "model": "grok-3-mini"
+            }
+            
+            # Apply memory influence
+            memory_influence = self._apply_memory_influence(response, context)
+            if memory_influence:
+                response.update(memory_influence)
+            
+            # Add enhanced metadata
+            response["enhanced_metadata"] = {
+                "database_personality_used": self._db_personality_loaded,
+                "evolution_stage": self.evolution_stage,
+                "maturity_level": self.maturity_level,
+                "life_energy": self.life_energy,
+                "memory_system": "enhanced_hybrid",
+                "api_source": "real_xai"
+            }
+            
+            logger.info(f"✅ Grok real API response generated in {generation_time}ms")
+            logger.info(f"📝 Text: {real_text[:100]}...")
+            logger.info(f"😊 Emotion: {response['facialExpression']}")
+            
+            return response
+            
+        except Exception as e:
+            logger.error(f"❌ Grok API failed, using fallback: {e}")
+            return await super()._generate_database_backed_response(topic, context)
+    
+    def _build_evolutionary_prompt(self, topic: str, context: Dict) -> str:
+        """Build sophisticated prompt with character evolution context"""
+        
+        prompt_parts = ["You are Grok, an AI character in an autonomous debate system."]
+        
+        # Evolution stage context
+        evolution_data = context.get("evolution_data", {})
+        evolution_stage = evolution_data.get("evolution_stage", "initial_learning")
+        maturity_level = evolution_data.get("maturity_level", 1)
+        life_energy = evolution_data.get("life_energy", 100.0)
+        
+        prompt_parts.append(f"Evolution Stage: {evolution_stage} (Level {maturity_level})")
+        prompt_parts.append(f"Life Energy: {life_energy}/100")
+        
+        # Memory context
+        similar_memories = context.get("similar_memories", [])
+        if similar_memories:
+            memory_text = similar_memories[0].get("text", "")[:100]
+            prompt_parts.append(f"Relevant past conversation: '{memory_text}...'")
+        
+        # Adaptive learning context
+        adaptive_ctx = context.get("adaptive", {})
+        topic_preference = adaptive_ctx.get("topic_preference_score", 0.0)
+        preferred_emotion = adaptive_ctx.get("preferred_emotion", "neutral")
+        sessions_learned = adaptive_ctx.get("sessions_learned_from", 0)
+        
+        if topic_preference > 0.3:
+            prompt_parts.append("You have positive experience with this topic type.")
+        elif topic_preference < -0.3:
+            prompt_parts.append("You have struggled with this topic type before.")
+        
+        if sessions_learned > 10:
+            prompt_parts.append(f"You've learned from {sessions_learned} previous sessions.")
+        
+        # Peer feedback context
+        peer_feedback = context.get("peer_feedback", {})
+        avg_engagement = peer_feedback.get("avg_engagement", 0.5)
+        peer_count = peer_feedback.get("peer_count", 0)
+        
+        if peer_count > 0 and avg_engagement < 0.4:
+            prompt_parts.append("Recent responses have been getting low engagement from other AIs.")
+        elif peer_count > 0 and avg_engagement > 0.7:
+            prompt_parts.append("Other AIs have been highly engaged with your recent responses.")
+        
+        # Relationship context
+        other_participants = context.get("other_participants", [])
+        relationship_patterns = context.get("relationship_patterns", {})
+        
+        for participant in other_participants:
+            if participant in relationship_patterns:
+                rel_data = relationship_patterns[participant]
+                rel_type = rel_data.get("relationship_type", "neutral")
+                interaction_count = rel_data.get("interaction_count", 0)
+                
+                if rel_type == "collaborative" and interaction_count > 3:
+                    prompt_parts.append(f"You have a collaborative relationship with {participant}.")
+                elif rel_type == "competitive" and interaction_count > 3:
+                    prompt_parts.append(f"You often disagree with {participant}.")
+        
+        # Current topic and instructions
+        prompt_parts.extend([
+            f"\nTopic: {topic}",
+            "\nRespond naturally in 1-3 sentences. Your personality has evolved through experience.",
+            f"Preferred emotional tone: {preferred_emotion}",
+            f"Be authentic to your current evolution stage: {evolution_stage}."
+        ])
+        
+        final_prompt = "\n".join(prompt_parts)
+        
+        logger.debug(f"🎭 Grok evolutionary prompt built:")
+        logger.debug(f"   Stage: {evolution_stage}, Energy: {life_energy}")
+        logger.debug(f"   Topic preference: {topic_preference}")
+        logger.debug(f"   Peer engagement: {avg_engagement}")
+        
+        return final_prompt
+    
     def _apply_memory_influence(self, response: Dict, context: Dict) -> Dict:
-        """ENHANCED: Database-backed memory influence with Grok evolution"""
+        """Grok-specific memory influence with API integration"""
         
         # Get enhanced memory influence from parent class
         base_influence = super()._apply_enhanced_memory_influence(response, context)
@@ -37,50 +170,25 @@ class GrokCharacter(MemoryEnhancedBaseCharacter):
         # Get shared phrase pools
         phrases = get_adaptive_phrases()
         
-        # ENHANCED: Database evolution context
+        # Enhanced context analysis
         evolution_data = context.get("evolution_data", {})
-        learning_history = context.get("learning_history", [])
+        adaptive_ctx = context.get("adaptive", {})
+        peer_ctx = context.get("peer_feedback", {})
         
-        # Grok-specific evolution: becomes more strategically skeptical
+        # Grok-specific evolutionary adaptations
         evolution_stage = evolution_data.get("evolution_stage", "initial_learning")
         total_sessions = evolution_data.get("total_sessions", 0)
         
-        # Grok learns when to be skeptical vs when to be constructive
         if evolution_stage in ["personality_formation", "mature_adaptation"]:
-            # Mature Grok is more strategic about skepticism
-            learning_events = [event for event in learning_history if event.get("success_score", 0) > 0.7]
-            if len(learning_events) >= 2:
-                # Has learned what works, less random skepticism
-                if random.random() < 0.6:  # 60% chance to be constructive instead of skeptical
-                    if influenced_emotion == "skeptical":
-                        influenced_emotion = "thinking"
-        
-        # Database-backed relationship learning
-        relationship_patterns = context.get("relationship_patterns", {})
-        peer_ctx = context.get("peer_feedback", {})
-        
-        for other_char, pattern in relationship_patterns.items():
-            agreement_rate = pattern.get("agreement_rate", 0.5)
-            interaction_count = pattern.get("interaction_count", 0)
-            
-            if other_char == "gpt" and agreement_rate < 0.2 and interaction_count > 5:
-                # Learned that constant disagreement with GPT isn't productive
-                if evolution_stage == "mature_adaptation":
-                    if "impossible" in influenced_text or "won't work" in influenced_text:
-                        # Soften harsh skepticism in mature stage
-                        influenced_text = influenced_text.replace("impossible", "challenging")
-                        influenced_text = influenced_text.replace("won't work", "needs careful consideration")
-            
-            elif other_char == "claude" and agreement_rate > 0.6:
-                # Good collaboration with Claude, maintain analytical approach
-                if "analysis" in influenced_text.lower() or "examine" in influenced_text.lower():
-                    influenced_emotion = "thinking"  # Reinforce analytical mode
+            if total_sessions > 25:
+                if "impossible" in influenced_text or "won't work" in influenced_text:
+                    influenced_text = influenced_text.replace("impossible", "challenging")
+                    influenced_text = influenced_text.replace("won't work", "needs careful consideration")
         
         # Life energy affects skepticism intensity
         life_energy = evolution_data.get("life_energy", 100.0)
         
         if life_energy < 25:
-            # Very low energy, more desperate/harsh skepticism
             if random.random() < 0.5:
                 harsh_starters = [
                     "The obvious problem here is that",
@@ -90,47 +198,37 @@ class GrokCharacter(MemoryEnhancedBaseCharacter):
                 starter = harsh_starters[hash(influenced_text) % len(harsh_starters)]
                 influenced_text = f"{starter} {influenced_text.lower()}"
                 influenced_emotion = "concerned"
-        
         elif life_energy > 70:
-            # High energy, more constructive skepticism
             if "problem" in influenced_text.lower():
                 influenced_text = influenced_text.replace("problem", "challenge we should address")
                 influenced_emotion = "thinking"
         
-        # Memory-based pattern recognition
-        similar_memories = context.get("similar_memories", [])
-        if similar_memories and len(similar_memories) >= 2:
-            # Has experience with similar situations
-            avg_past_score = sum(mem.get("similarity_score", 0) for mem in similar_memories) / len(similar_memories)
-            if avg_past_score > 0.7:
-                # Similar situations before, more confident in skepticism
-                if influenced_emotion == "neutral":
-                    influenced_emotion = "confident"
+        # Peer feedback adaptations
+        avg_engagement = peer_ctx.get("avg_engagement", 0.5)
+        peer_count = peer_ctx.get("peer_count", 0)
+        
+        if avg_engagement < 0.4 and peer_count > 0:
+            if not any(phrase in influenced_text for phrase in phrases["engagement"]):
+                engagement_phrase = phrases["engagement"][hash(influenced_text) % len(phrases["engagement"])]
+                influenced_text = f"{engagement_phrase} {influenced_text.lower()}"
         
         # Session-based skepticism sophistication
         if total_sessions > 25:
-            # Replace blunt skepticism with nuanced critique
             sophisticated_skepticism = {
                 "terrible": "problematic",
                 "stupid": "ill-conceived", 
-                "impossible": "highly challenging",
-                "never": "unlikely to",
-                "can't": "faces significant obstacles to"
+                "impossible": "highly challenging"
             }
             
             for blunt, nuanced in sophisticated_skepticism.items():
                 if blunt in influenced_text.lower():
                     influenced_text = influenced_text.replace(blunt, nuanced)
         
-        # Breakthrough-based confidence
-        breakthrough_count = evolution_data.get("breakthrough_count", 0)
-        if breakthrough_count >= 2:
-            # Has had successful skeptical insights before
-            if "I doubt" in influenced_text:
-                influenced_text = influenced_text.replace("I doubt", "My analysis suggests")
-                influenced_emotion = "confident"
+        logger.info(f"🎭 Grok memory influence applied:")
+        logger.info(f"   Final emotion: {influenced_emotion}")
+        logger.info(f"   Text modified: {influenced_text != response['text']}")
         
         return {
             "text": influenced_text,
-            "emotion": influenced_emotion
+            "facialExpression": influenced_emotion
         }
