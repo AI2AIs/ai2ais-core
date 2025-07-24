@@ -334,6 +334,22 @@ class MemoryEnhancedBaseCharacter(BaseCharacter):
         enhanced_context = context.copy() if context else {}
         
         try:
+            session_id = enhanced_context.get("session_id")
+            if session_id:
+                # Get last 5 conversations
+                recent_conversation = await self._get_recent_conversation_context(session_id)
+                enhanced_context["recent_conversation"] = recent_conversation
+                
+                # If peer-triggered, mark who triggered it
+                if enhanced_context.get("peer_triggered"):
+                    trigger_reaction = enhanced_context.get("trigger_reaction")
+                    if trigger_reaction:
+                        enhanced_context["responding_to_character"] = trigger_reaction.target_character
+                        enhanced_context["peer_reaction_details"] = {
+                            "engagement": trigger_reaction.engagement_level,
+                            "agreement": trigger_reaction.agreement_level,
+                            "specific_reaction": getattr(trigger_reaction, 'specific_reaction', '')
+                        }
             # 1. Similar conversations from hybrid memory
             similar_memories = await self.enhanced_memory.find_similar_conversations(
                 current_text=topic,
@@ -415,6 +431,66 @@ class MemoryEnhancedBaseCharacter(BaseCharacter):
             logger.error(f"❌ Failed to build enhanced context: {e}")
         
         return enhanced_context
+    
+    async def _get_recent_conversation_context(self, session_id: str, limit: int = 5) -> str:
+        """Get recent conversation context for natural flow"""
+        
+        try:
+            # Get recent speeches from database
+            recent_speeches = []
+            
+            # Get from in-memory cache first (if available)
+            if hasattr(self, 'recent_conversations') and self.recent_conversations:
+                # In-memory cache
+                recent_entries = list(self.recent_conversations)[-limit:]
+                for entry in recent_entries:
+                    if hasattr(entry, 'text') and hasattr(entry, 'character_id'):
+                        recent_speeches.append({
+                            'character_id': getattr(entry, 'character_id', self.character_id),
+                            'text': entry.text[:200],  # Limit to 200 chars
+                            'emotion': getattr(entry, 'emotion', 'neutral')
+                        })
+            
+            # If not enough in-memory entries, fetch from database
+            if len(recent_speeches) < 3:
+                try:
+                    from app.core.database.service import db_service
+                    async with db_service.get_connection() as conn:
+                        db_speeches = await conn.fetch("""
+                            SELECT character_id, emotion, timestamp 
+                            FROM session_speeches 
+                            WHERE session_id = $1 
+                            ORDER BY timestamp DESC 
+                            LIMIT $2
+                        """, session_id, limit)
+                        
+                        for speech in db_speeches:
+                            if speech['character_id'] != self.character_id:  # Only other characters' speeches
+                                recent_speeches.append({
+                                    'character_id': speech['character_id'],
+                                    'text': f"[{speech['emotion']} response about the topic]",
+                                    'emotion': speech['emotion']
+                                })
+                            
+                except Exception as db_error:
+                    logger.warning(f"Could not get conversation from database: {db_error}")
+            
+            # Format conversation context
+            if not recent_speeches:
+                return "This is the start of our conversation."
+            
+            context_lines = []
+            for speech in reversed(recent_speeches[-3:]):  # Last 3, chronological order
+                context_lines.append(f"{speech['character_id'].upper()}: {speech['text']} ({speech['emotion']})")
+            
+            conversation_context = "\n".join(context_lines)
+            
+            logger.debug(f"🎭 Conversation context for {self.character_id}:\n{conversation_context}")
+            return conversation_context
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to get conversation context: {e}")
+            return "This is the start of our conversation."
     
     async def _get_historical_peer_feedback_summary(self) -> Dict:
         """Get historical peer feedback summary when no current reactions"""

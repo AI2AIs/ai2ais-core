@@ -273,7 +273,7 @@ class EnhancedAIResponseTracker:
         if hasattr(self, 'last_response_times'):
             now = time.time()
             last_time = self.last_response_times.get(responding_character_id, 0)
-            cooldown_period = 15.0 # ← REDUCED from 20.0 to 8.0 seconds
+            cooldown_period = 8.0  # ← REDUCED from 20.0 to 8.0 seconds
             
             if now - last_time < cooldown_period:
                 logger.info(f"⏰ {responding_character_id} on cooldown ({now - last_time:.1f}s < {cooldown_period}s)")
@@ -291,7 +291,7 @@ class EnhancedAIResponseTracker:
         logger.info(f"   Agreement: {best_reaction.agreement_level:.2f}")
         
         # ========== FAST RESPONSE TIMING ==========
-        delay = random.uniform(8.0, 15.0)  # ← MUCH FASTER: 1-3 seconds instead of 3-7
+        delay = random.uniform(1.0, 3.0)  # ← MUCH FASTER: 1-3 seconds instead of 3-7
         logger.info(f"⏱️ Delaying peer response by {delay:.1f} seconds")
         # ========== END FAST TIMING ==========
         

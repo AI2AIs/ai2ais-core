@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     
     # Media
     GOOGLE_TTS_API_KEY: str = ""
+    REPLICATE_API_TOKEN: str = ""
+    TTS_PROVIDER: str = "chatterbox"
+    VOICE_REFERENCES_PATH: str = "data/voices/"
 
     # Frontend
     FRONTEND_URL: str = "http://localhost:3000"
@@ -22,7 +25,7 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     ANTHROPIC_API_KEY: str = ""
     XAI_API_KEY: str = ""    
-    REPLICATE_API_TOKEN: str = ""
+
 
     # Vector Database
     QDRANT_HOST: str = "localhost"

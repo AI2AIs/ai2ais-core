@@ -203,6 +203,8 @@ async def get_character_dashboard(character_id: str):
    except Exception as e:
        logger.error(f"Failed to get character dashboard: {e}")
        return {"error": str(e), "character_id": character_id}
+   
+
 
 if __name__ == "__main__":
    import uvicorn

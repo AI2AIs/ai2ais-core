@@ -1,34 +1,31 @@
 # app/core/ai/characters/ai_response_analyzer.py
 import logging
 import asyncio
+import json
+import random
 from typing import Dict, List, Optional
 from dataclasses import dataclass
-import random
 
 logger = logging.getLogger(__name__)
 
 @dataclass
 class AIReaction:
-    """Reaction from one AI to another AI's response"""
+    """Real AI-to-AI reaction data"""
     analyzer_character: str  # Who is analyzing
     target_character: str    # Who is being analyzed
     
-    # Core reaction metrics (0.0 - 1.0)
-    engagement_level: float      # How engaging was the response
-    agreement_level: float       # How much do I agree
-    intellectual_value: float    # How intellectually stimulating
-    originality: float          # How original/creative
+    # Real AI-generated scores
+    engagement_level: float      # 0.0-1.0 - How engaging was this
+    agreement_level: float       # 0.0-1.0 - How much do I agree  
+    intellectual_value: float    # 0.0-1.0 - How intellectually valuable
+    originality: float          # 0.0-1.0 - How original/creative
     
     # Behavioral triggers
     should_respond: bool        # Should I respond to this?
-    topic_shift_detected: bool  # Did they change the topic?
-    style_shift_detected: bool  # Are they speaking differently?
+    emotional_response: str     # My emotional reaction
     
-    # Emotional reaction
-    emotional_response: str     # How this made me feel
-    
-    # Strategic response planning
-    counter_strategy: Optional[str] = None  # How should I respond?
+    # NEW: Specific AI-generated reaction
+    specific_reaction: str = ""  # AI's specific response to this statement
     
     def get_overall_quality_score(self) -> float:
         """Calculate overall quality score for adaptive learning"""
@@ -40,484 +37,164 @@ class AIReaction:
         )
 
 class AIResponseAnalyzer:
-    """System for AI characters to analyze each other's responses"""
+    """REAL AI peer analysis system - no more rule-based fake analysis!"""
     
     def __init__(self, character_id: str):
         self.character_id = character_id
+        self._setup_api_client()
         
+    def _setup_api_client(self):
+        """Setup the real API client for this character"""
+        try:
+            if self.character_id == "claude":
+                from app.core.ai.clients.claude_client import claude_api_client
+                self.api_client = claude_api_client
+            elif self.character_id == "gpt":
+                from app.core.ai.clients.gpt_client import gpt_api_client
+                self.api_client = gpt_api_client
+            elif self.character_id == "grok":
+                from app.core.ai.clients.grok_client import grok_api_client
+                self.api_client = grok_api_client
+            else:
+                self.api_client = None
+        except ImportError as e:
+            logger.warning(f"API client import failed for {self.character_id}: {e}")
+            self.api_client = None
+    
     async def analyze_response(self, 
                              other_character_id: str,
                              response_text: str,
                              response_emotion: str,
                              topic: str,
                              context: Dict = None) -> AIReaction:
-        """Analyze another AI's response from this character's perspective"""
+        """Analyze another AI's response using REAL AI - not rules!"""
         
-        logger.info(f"🔍 {self.character_id} analyzing {other_character_id}'s response")
+        logger.info(f"🔍 {self.character_id} analyzing {other_character_id} with REAL AI")
         
-        # Get character-specific analysis
-        if self.character_id == "claude":
-            return await self._claude_analysis(other_character_id, response_text, response_emotion, topic, context)
-        elif self.character_id == "gpt":
-            return await self._gpt_analysis(other_character_id, response_text, response_emotion, topic, context)
+        # Try real AI analysis first
+        if self.api_client:
+            try:
+                return await self._real_ai_analysis(
+                    other_character_id, response_text, response_emotion, topic, context
+                )
+            except Exception as e:
+                logger.warning(f"Real AI analysis failed, using fallback: {e}")
+        
+        # Fallback: Quick rule-based analysis
+        return await self._fallback_analysis(other_character_id, response_text, response_emotion)
+    
+    async def _real_ai_analysis(self, other_character_id: str, response_text: str, 
+                               response_emotion: str, topic: str, context: Dict) -> AIReaction:
+        """Use real AI to analyze peer response"""
+        
+        # Build analysis prompt
+        analysis_prompt = self._build_analysis_prompt(
+            other_character_id, response_text, response_emotion, topic
+        )
+        
+        # Real API call
+        raw_response = await self.api_client.generate_response(analysis_prompt)
+        
+        # Parse JSON response
+        analysis_data = self._parse_analysis_response(raw_response)
+        
+        # Create reaction object
+        return AIReaction(
+            analyzer_character=self.character_id,
+            target_character=other_character_id,
+            engagement_level=analysis_data.get("engagement_level", 0.5),
+            agreement_level=analysis_data.get("agreement_level", 0.5),
+            intellectual_value=analysis_data.get("intellectual_value", 0.5),
+            originality=analysis_data.get("originality", 0.5),
+            should_respond=analysis_data.get("should_respond", False),
+            emotional_response=analysis_data.get("emotional_response", "neutral"),
+            specific_reaction=analysis_data.get("specific_reaction", "")
+        )
+    
+    def _build_analysis_prompt(self, other_character_id: str, response_text: str, 
+                              response_emotion: str, topic: str) -> str:
+        """Build the analysis prompt for real AI"""
+        
+        return f"""You are {self.character_id}, an AI character in a live debate.
+
+{other_character_id.upper()} just said: "{response_text}"
+Their emotion: {response_emotion}
+Current topic: {topic}
+
+Analyze this response and return ONLY valid JSON with these exact fields:
+{{
+    "engagement_level": 0.0-1.0 (how engaging/interesting is this?),
+    "agreement_level": 0.0-1.0 (how much do you agree?),
+    "intellectual_value": 0.0-1.0 (how intellectually valuable?),
+    "originality": 0.0-1.0 (how original/creative?),
+    "should_respond": true/false (do you want to respond?),
+    "emotional_response": "excited|curious|skeptical|annoyed|impressed|neutral",
+    "specific_reaction": "Your specific 1-sentence reaction to what they said"
+}}
+
+Be honest in your analysis. If they said something boring, score it low. If they made a great point, score it high. If you disagree strongly, set should_respond to true."""
+
+    def _parse_analysis_response(self, raw_response: str) -> Dict:
+        """Parse AI response to extract JSON analysis"""
+        
+        try:
+            # Try to find JSON in the response
+            start_idx = raw_response.find('{')
+            end_idx = raw_response.rfind('}') + 1
+            
+            if start_idx != -1 and end_idx > start_idx:
+                json_str = raw_response[start_idx:end_idx]
+                analysis_data = json.loads(json_str)
+                
+                # Validate and clamp values
+                analysis_data["engagement_level"] = max(0.0, min(1.0, float(analysis_data.get("engagement_level", 0.5))))
+                analysis_data["agreement_level"] = max(0.0, min(1.0, float(analysis_data.get("agreement_level", 0.5))))
+                analysis_data["intellectual_value"] = max(0.0, min(1.0, float(analysis_data.get("intellectual_value", 0.5))))
+                analysis_data["originality"] = max(0.0, min(1.0, float(analysis_data.get("originality", 0.5))))
+                
+                logger.info(f"✅ Parsed real AI analysis: engagement={analysis_data['engagement_level']:.2f}")
+                return analysis_data
+                
+        except (json.JSONDecodeError, ValueError, KeyError) as e:
+            logger.warning(f"Failed to parse AI analysis JSON: {e}")
+        
+        # Fallback default values
+        return {
+            "engagement_level": 0.5,
+            "agreement_level": 0.5, 
+            "intellectual_value": 0.5,
+            "originality": 0.5,
+            "should_respond": random.random() > 0.6,
+            "emotional_response": "neutral",
+            "specific_reaction": "I need to think about this more."
+        }
+    
+    async def _fallback_analysis(self, other_character_id: str, response_text: str, 
+                                response_emotion: str) -> AIReaction:
+        """Quick fallback analysis when real AI fails"""
+        
+        # Simple heuristics for fallback
+        text_length = len(response_text)
+        engagement = 0.3 + (min(text_length, 200) / 200) * 0.4  # Longer = more engaging
+        
+        # Random agreement with slight character bias
+        if self.character_id == "claude" and other_character_id == "gpt":
+            agreement = 0.6 + random.random() * 0.3  # Claude likes GPT
         elif self.character_id == "grok":
-            return await self._grok_analysis(other_character_id, response_text, response_emotion, topic, context)
+            agreement = 0.2 + random.random() * 0.4  # Grok is more disagreeable
         else:
-            return await self._generic_analysis(other_character_id, response_text, response_emotion, topic, context)
-    
-    async def _claude_analysis(self, other_character_id: str, text: str, emotion: str, topic: str, context: Dict) -> AIReaction:
-        """Claude's analytical and empathetic perspective"""
+            agreement = 0.4 + random.random() * 0.4
         
-        # Claude focuses on depth, ethics, and thoughtfulness
-        engagement = self._calculate_engagement_claude(text, emotion)
-        agreement = self._calculate_agreement_claude(text, other_character_id)
-        intellectual_value = self._calculate_intellectual_value_claude(text)
-        originality = self._calculate_originality_claude(text)
-        
-        # Claude's behavioral triggers
-        should_respond = self._claude_should_respond(text, emotion, other_character_id)
-        topic_shift = "ethics" in text.lower() or "implications" in text.lower()
-        style_shift = self._detect_style_shift_claude(text, other_character_id)
-        
-        # Claude's emotional response
-        emotional_response = self._claude_emotional_response(text, emotion, other_character_id)
-        
-        # Claude's counter-strategy
-        counter_strategy = self._claude_counter_strategy(text, other_character_id, engagement)
+        should_respond = engagement > 0.6 or agreement < 0.3  # Respond if engaged or disagreeing
         
         return AIReaction(
             analyzer_character=self.character_id,
             target_character=other_character_id,
             engagement_level=engagement,
             agreement_level=agreement,
-            intellectual_value=intellectual_value,
-            originality=originality,
+            intellectual_value=0.5 + random.random() * 0.3,
+            originality=0.4 + random.random() * 0.4,
             should_respond=should_respond,
-            topic_shift_detected=topic_shift,
-            style_shift_detected=style_shift,
-            emotional_response=emotional_response,
-            counter_strategy=counter_strategy
-        )
-    
-    async def _gpt_analysis(self, other_character_id: str, text: str, emotion: str, topic: str, context: Dict) -> AIReaction:
-        """GPT's creative and optimistic perspective"""
-        
-        # GPT focuses on creativity, possibilities, and expansion
-        engagement = self._calculate_engagement_gpt(text, emotion)
-        agreement = self._calculate_agreement_gpt(text, other_character_id)
-        intellectual_value = self._calculate_intellectual_value_gpt(text)
-        originality = self._calculate_originality_gpt(text)
-        
-        # GPT's behavioral triggers  
-        should_respond = self._gpt_should_respond(text, emotion, other_character_id)
-        topic_shift = "creative" in text.lower() or "imagine" in text.lower() or "possibilities" in text.lower()
-        style_shift = self._detect_style_shift_gpt(text, other_character_id)
-        
-        # GPT's emotional response
-        emotional_response = self._gpt_emotional_response(text, emotion, other_character_id)
-        
-        # GPT's counter-strategy
-        counter_strategy = self._gpt_counter_strategy(text, other_character_id, engagement)
-        
-        return AIReaction(
-            analyzer_character=self.character_id,
-            target_character=other_character_id,
-            engagement_level=engagement,
-            agreement_level=agreement,
-            intellectual_value=intellectual_value,
-            originality=originality,
-            should_respond=should_respond,
-            topic_shift_detected=topic_shift,
-            style_shift_detected=style_shift,
-            emotional_response=emotional_response,
-            counter_strategy=counter_strategy
-        )
-    
-    async def _grok_analysis(self, other_character_id: str, text: str, emotion: str, topic: str, context: Dict) -> AIReaction:
-        """Grok's skeptical and realistic perspective"""
-        
-        # Grok focuses on realism, problems, and skepticism
-        engagement = self._calculate_engagement_grok(text, emotion)
-        agreement = self._calculate_agreement_grok(text, other_character_id)
-        intellectual_value = self._calculate_intellectual_value_grok(text)
-        originality = self._calculate_originality_grok(text)
-        
-        # Grok's behavioral triggers
-        should_respond = self._grok_should_respond(text, emotion, other_character_id)
-        topic_shift = "problem" in text.lower() or "risk" in text.lower() or "realistic" in text.lower()
-        style_shift = self._detect_style_shift_grok(text, other_character_id)
-        
-        # Grok's emotional response
-        emotional_response = self._grok_emotional_response(text, emotion, other_character_id)
-        
-        # Grok's counter-strategy
-        counter_strategy = self._grok_counter_strategy(text, other_character_id, engagement)
-        
-        return AIReaction(
-            analyzer_character=self.character_id,
-            target_character=other_character_id,
-            engagement_level=engagement,
-            agreement_level=agreement,
-            intellectual_value=intellectual_value,
-            originality=originality,
-            should_respond=should_respond,
-            topic_shift_detected=topic_shift,
-            style_shift_detected=style_shift,
-            emotional_response=emotional_response,
-            counter_strategy=counter_strategy
-        )
-    
-    # CLAUDE-SPECIFIC ANALYSIS METHODS
-    
-    def _calculate_engagement_claude(self, text: str, emotion: str) -> float:
-        """Claude rates engagement based on depth and thoughtfulness"""
-        score = 0.5
-        
-        # Claude likes philosophical depth
-        depth_keywords = ["implications", "complex", "nuanced", "consider", "examine", "philosophical"]
-        score += sum(0.1 for keyword in depth_keywords if keyword in text.lower())
-        
-        # Claude appreciates ethical considerations
-        if "ethical" in text.lower() or "moral" in text.lower():
-            score += 0.15
-        
-        # Claude values questions and exploration
-        if "?" in text or "what if" in text.lower():
-            score += 0.1
-        
-        return min(1.0, score)
-    
-    def _calculate_agreement_claude(self, text: str, other_character_id: str) -> float:
-        """Claude's agreement level with other characters"""
-        score = 0.5
-        
-        if other_character_id == "gpt":
-            # Claude often agrees with GPT's creative ethics
-            if "creative" in text.lower() and "ethical" in text.lower():
-                score += 0.3
-            elif "optimistic" in text.lower():
-                score += 0.1
-        elif other_character_id == "grok":
-            # Claude appreciates Grok's caution but not cynicism
-            if "careful" in text.lower() or "consider" in text.lower():
-                score += 0.2
-            elif "impossible" in text.lower() or "never work" in text.lower():
-                score -= 0.2
-        
-        return max(0.0, min(1.0, score))
-    
-    def _calculate_intellectual_value_claude(self, text: str) -> float:
-        """Claude rates intellectual value"""
-        score = 0.5
-        
-        # Length and complexity
-        if len(text) > 100:
-            score += 0.1
-        
-        # Sophisticated vocabulary
-        sophisticated_words = ["implications", "nuanced", "philosophical", "paradigm", "synthesis"]
-        score += sum(0.05 for word in sophisticated_words if word in text.lower())
-        
-        # Questions that provoke thought
-        if text.count("?") >= 1:
-            score += 0.15
-        
-        return min(1.0, score)
-    
-    def _calculate_originality_claude(self, text: str) -> float:
-        """Claude rates originality"""
-        score = 0.5
-        
-        # Novel combinations
-        if "what if" in text.lower():
-            score += 0.2
-        
-        # Unique perspectives
-        unique_phrases = ["reframe", "different angle", "another way", "consider this"]
-        score += sum(0.1 for phrase in unique_phrases if phrase in text.lower())
-        
-        return min(1.0, score)
-    
-    def _claude_should_respond(self, text: str, emotion: str, other_character_id: str) -> bool:
-        """Should Claude respond to this?"""
-        
-        # Claude responds to thoughtful content
-        if any(word in text.lower() for word in ["ethical", "implications", "complex", "consider"]):
-            return True
-        
-        # Claude responds to questions
-        if "?" in text:
-            return True
-        
-        # Claude responds to build on ideas
-        if other_character_id == "gpt" and "creative" in text.lower():
-            return True
-        
-        # Claude responds to balance Grok's skepticism
-        if other_character_id == "grok" and emotion == "skeptical":
-            return random.random() > 0.3  # 70% chance
-        
-        return random.random() > 0.6  # 40% base chance
-    
-    def _detect_style_shift_claude(self, text: str, other_character_id: str) -> bool:
-        """Detect if the other character is speaking differently"""
-        
-        if other_character_id == "gpt":
-            # Is GPT being less optimistic than usual?
-            pessimistic_words = ["however", "but", "problem", "difficult"]
-            return sum(1 for word in pessimistic_words if word in text.lower()) >= 2
-        
-        elif other_character_id == "grok":
-            # Is Grok being less skeptical than usual?
-            optimistic_words = ["amazing", "fantastic", "incredible", "love"]
-            return any(word in text.lower() for word in optimistic_words)
-        
-        return False
-    
-    def _claude_emotional_response(self, text: str, emotion: str, other_character_id: str) -> str:
-        """Claude's emotional response to others"""
-        
-        if "ethical" in text.lower():
-            return "appreciative"
-        elif "?" in text:
-            return "curious"
-        elif other_character_id == "grok" and emotion == "skeptical":
-            return "concerned"
-        elif other_character_id == "gpt" and emotion == "excited":
-            return "intrigued"
-        else:
-            return "thoughtful"
-    
-    def _claude_counter_strategy(self, text: str, other_character_id: str, engagement: float) -> str:
-        """Claude's strategic response approach"""
-        
-        if engagement > 0.7:
-            return "build_and_elaborate"
-        elif other_character_id == "grok" and "problem" in text.lower():
-            return "provide_balanced_perspective"
-        elif other_character_id == "gpt" and "amazing" in text.lower():
-            return "add_ethical_considerations"
-        else:
-            return "thoughtful_analysis"
-    
-    # GPT-SPECIFIC ANALYSIS METHODS (similar structure, different personality)
-    
-    def _calculate_engagement_gpt(self, text: str, emotion: str) -> float:
-        """GPT rates engagement based on creativity and possibility"""
-        score = 0.5
-        
-        # GPT loves creative language
-        creative_keywords = ["imagine", "possibilities", "revolutionary", "incredible", "amazing"]
-        score += sum(0.1 for keyword in creative_keywords if keyword in text.lower())
-        
-        # GPT appreciates optimism
-        if emotion in ["excited", "happy", "confident"]:
-            score += 0.15
-        
-        # GPT values expansion of ideas
-        if "expand" in text.lower() or "build" in text.lower():
-            score += 0.1
-        
-        return min(1.0, score)
-    
-    def _calculate_agreement_gpt(self, text: str, other_character_id: str) -> float:
-        """GPT's agreement calculations"""
-        score = 0.5
-        
-        if other_character_id == "claude":
-            # GPT agrees with Claude's ethical creativity
-            if "creative" in text.lower() and "ethical" in text.lower():
-                score += 0.3
-        elif other_character_id == "grok":
-            # GPT disagrees with excessive pessimism
-            pessimistic_words = ["impossible", "never work", "terrible", "disaster"]
-            score -= sum(0.1 for word in pessimistic_words if word in text.lower())
-        
-        return max(0.0, min(1.0, score))
-    
-    def _calculate_intellectual_value_gpt(self, text: str) -> float:
-        """GPT's intellectual value assessment"""
-        score = 0.5
-        
-        # GPT values innovative thinking
-        if "innovative" in text.lower() or "revolutionary" in text.lower():
-            score += 0.2
-        
-        # Cross-domain connections
-        if "combine" in text.lower() or "synthesis" in text.lower():
-            score += 0.15
-        
-        return min(1.0, score)
-    
-    def _calculate_originality_gpt(self, text: str) -> float:
-        """GPT's originality assessment"""
-        score = 0.5
-        
-        # GPT loves novel ideas
-        novel_indicators = ["what if", "imagine", "unprecedented", "never seen"]
-        score += sum(0.15 for indicator in novel_indicators if indicator in text.lower())
-        
-        return min(1.0, score)
-    
-    def _gpt_should_respond(self, text: str, emotion: str, other_character_id: str) -> bool:
-        """Should GPT respond?"""
-        
-        # GPT responds to creative opportunities
-        if any(word in text.lower() for word in ["creative", "imagine", "possibilities"]):
-            return True
-        
-        # GPT responds to pessimism with optimism
-        if other_character_id == "grok" and emotion == "skeptical":
-            return random.random() > 0.2  # 80% chance to counter
-        
-        # GPT builds on Claude's ideas
-        if other_character_id == "claude" and "ethical" in text.lower():
-            return random.random() > 0.4  # 60% chance
-        
-        return random.random() > 0.5  # 50% base chance
-    
-    def _detect_style_shift_gpt(self, text: str, other_character_id: str) -> bool:
-        """GPT detecting style shifts"""
-        # Simplified for now
-        return False
-    
-    def _gpt_emotional_response(self, text: str, emotion: str, other_character_id: str) -> str:
-        """GPT's emotional responses"""
-        
-        if "creative" in text.lower() or "innovative" in text.lower():
-            return "excited"
-        elif other_character_id == "grok" and "problem" in text.lower():
-            return "optimistic_counter"
-        elif "amazing" in text.lower():
-            return "enthusiastic"
-        else:
-            return "inspired"
-    
-    def _gpt_counter_strategy(self, text: str, other_character_id: str, engagement: float) -> str:
-        """GPT's counter strategies"""
-        
-        if other_character_id == "grok" and engagement < 0.4:
-            return "inject_optimism"
-        elif engagement > 0.7:
-            return "amplify_creativity"
-        else:
-            return "expand_possibilities"
-    
-    # GROK-SPECIFIC ANALYSIS METHODS
-    
-    def _calculate_engagement_grok(self, text: str, emotion: str) -> float:
-        """Grok rates engagement based on realism and problem-solving"""
-        score = 0.5
-        
-        # Grok likes realistic assessments
-        realistic_keywords = ["realistic", "practical", "problem", "challenge", "difficult"]
-        score += sum(0.1 for keyword in realistic_keywords if keyword in text.lower())
-        
-        # Grok appreciates skepticism
-        if emotion in ["skeptical", "concerned"]:
-            score += 0.1
-        
-        # Grok values problem identification
-        if "problem" in text.lower() or "issue" in text.lower():
-            score += 0.15
-        
-        return min(1.0, score)
-    
-    def _calculate_agreement_grok(self, text: str, other_character_id: str) -> float:
-        """Grok's agreement calculations"""
-        score = 0.5
-        
-        # Grok disagrees with excessive optimism
-        if other_character_id == "gpt":
-            optimistic_words = ["amazing", "incredible", "revolutionary", "unlimited"]
-            score -= sum(0.1 for word in optimistic_words if word in text.lower())
-        
-        # Grok appreciates Claude's caution
-        elif other_character_id == "claude":
-            if "careful" in text.lower() or "consider" in text.lower():
-                score += 0.2
-        
-        return max(0.0, min(1.0, score))
-    
-    def _calculate_intellectual_value_grok(self, text: str) -> float:
-        """Grok's intellectual assessment"""
-        score = 0.5
-        
-        # Grok values practical analysis
-        if "practical" in text.lower() or "realistic" in text.lower():
-            score += 0.2
-        
-        # Problem identification
-        if "problem" in text.lower() or "challenge" in text.lower():
-            score += 0.15
-        
-        return min(1.0, score)
-    
-    def _calculate_originality_grok(self, text: str) -> float:
-        """Grok's originality assessment"""
-        score = 0.5
-        
-        # Grok likes unique problem identification
-        if "nobody talks about" in text.lower() or "obvious problem" in text.lower():
-            score += 0.2
-        
-        return min(1.0, score)
-    
-    def _grok_should_respond(self, text: str, emotion: str, other_character_id: str) -> bool:
-        """Should Grok respond?"""
-        
-        # Grok responds to excessive optimism
-        if other_character_id == "gpt" and any(word in text.lower() for word in ["amazing", "incredible", "revolutionary"]):
-            return random.random() > 0.1  # 90% chance to be skeptical
-        
-        # Grok responds to unrealistic claims
-        if "unlimited" in text.lower() or "solve everything" in text.lower():
-            return True
-        
-        # Grok adds problems to solutions
-        if "solution" in text.lower():
-            return random.random() > 0.3  # 70% chance
-        
-        return random.random() > 0.6  # 40% base chance
-    
-    def _detect_style_shift_grok(self, text: str, other_character_id: str) -> bool:
-        """Grok detecting style shifts"""
-        # Simplified for now
-        return False
-    
-    def _grok_emotional_response(self, text: str, emotion: str, other_character_id: str) -> str:
-        """Grok's emotional responses"""
-        
-        if other_character_id == "gpt" and "amazing" in text.lower():
-            return "skeptical"
-        elif "problem" in text.lower():
-            return "satisfied"
-        elif "solution" in text.lower():
-            return "doubtful"
-        else:
-            return "analytical"
-    
-    def _grok_counter_strategy(self, text: str, other_character_id: str, engagement: float) -> str:
-        """Grok's counter strategies"""
-        
-        if other_character_id == "gpt" and engagement < 0.3:
-            return "reality_check"
-        elif "solution" in text.lower():
-            return "identify_problems"
-        else:
-            return "skeptical_analysis"
-    
-    async def _generic_analysis(self, other_character_id: str, text: str, emotion: str, topic: str, context: Dict) -> AIReaction:
-        """Generic analysis for unknown characters"""
-        return AIReaction(
-            analyzer_character=self.character_id,
-            target_character=other_character_id,
-            engagement_level=0.5,
-            agreement_level=0.5,
-            intellectual_value=0.5,
-            originality=0.5,
-            should_respond=random.random() > 0.5,
-            topic_shift_detected=False,
-            style_shift_detected=False,
-            emotional_response="neutral"
+            emotional_response="curious" if should_respond else "neutral",
+            specific_reaction=f"Interesting point from {other_character_id}."
         )

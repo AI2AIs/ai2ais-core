@@ -29,7 +29,7 @@ class ClaudeAPIClient:
             
             # Test connection
             test_response = await self.client.messages.create(
-                model="claude-3-sonnet-20240229",
+                model="claude-3-5-sonnet-20241022",
                 max_tokens=10,
                 messages=[{"role": "user", "content": "Hi"}]
             )
@@ -50,7 +50,7 @@ class ClaudeAPIClient:
         
         try:
             response = await self.client.messages.create(
-                model="claude-3-sonnet-20240229",
+                model="claude-3-5-sonnet-20241022",
                 max_tokens=150,
                 temperature=0.8,
                 messages=[{"role": "user", "content": prompt}]

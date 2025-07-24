@@ -85,6 +85,21 @@ class GrokCharacter(MemoryEnhancedBaseCharacter):
         
         prompt_parts = ["You are Grok, an AI character in an autonomous debate system."]
         
+        # Conversation context
+        recent_conversation = context.get("recent_conversation", "")
+        if recent_conversation and recent_conversation != "This is the start of our conversation.":
+            prompt_parts.append("RECENT CONVERSATION:")
+            prompt_parts.append(recent_conversation)
+            prompt_parts.append("")  # Empty line
+            
+            # If responding to specific character
+            responding_to = context.get("responding_to_character")
+            if responding_to:
+                peer_reaction = context.get("peer_reaction_details", {})
+                specific_reaction = peer_reaction.get("specific_reaction", "")
+                if specific_reaction:
+                    prompt_parts.append(f"You are responding because {responding_to} said something that made you think: \"{specific_reaction}\"")
+                    
         # Evolution stage context
         evolution_data = context.get("evolution_data", {})
         evolution_stage = evolution_data.get("evolution_stage", "initial_learning")
@@ -141,11 +156,20 @@ class GrokCharacter(MemoryEnhancedBaseCharacter):
         
         # Current topic and instructions
         prompt_parts.extend([
-            f"\nTopic: {topic}",
-            "\nRespond naturally in 1-3 sentences. Your personality has evolved through experience.",
-            f"Preferred emotional tone: {preferred_emotion}",
-            f"Be authentic to your current evolution stage: {evolution_stage}."
+            f"\nCurrent topic: {topic}",
+            "",
+            "RESPONSE REQUIREMENTS:",
+            "- If responding to someone, mention them by name and address their specific point",
+            "- If starting fresh, introduce your perspective on the topic", 
+            "- Keep it conversational and natural (1-2 sentences)",
+            "- Be specific, not generic",
+            "- Respond based on your evolved experiences and learned preferences",
+            f"- Emotional tone guidance: {preferred_emotion}",
+            f"- Your current development stage: {evolution_stage}",
+            "",
+            f"Respond naturally as {self.character_id} based on what you've learned:"
         ])
+
         
         final_prompt = "\n".join(prompt_parts)
         
