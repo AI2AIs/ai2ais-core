@@ -1,14 +1,71 @@
 services:
+  a2ais-core:
+    build: 
+      context: .
+      target: production
+    container_name: a2ais-core
+    restart: unless-stopped
+    ports:
+      - "3002:3002"
+    environment:
+      # Database
+      - DATABASE_URL=postgresql://a2ais_user:a2ais_password@postgres:5432/a2ais_db
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+      - REDIS_URL=redis://redis:6379
+      
+      # AI APIs
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - XAI_API_KEY=${XAI_API_KEY}
+      
+      # TTS Services
+      - GOOGLE_TTS_API_KEY=${GOOGLE_TTS_API_KEY}
+      - REPLICATE_API_TOKEN=${REPLICATE_API_TOKEN}
+      
+      # Application Settings
+      - DEBUG=false
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
+      - MEMORY_CACHE_SIZE=100
+      - MAX_MEMORIES_PER_QUERY=10
+      - EMBEDDING_DIMENSION=1536
+      - EMBEDDING_MODEL=text-embedding-3-small
+      
+    depends_on:
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./data/voices:/app/data/voices:ro  # Voice reference files
+      - ./logs:/app/logs                   # Application logs
+      - ./temp:/app/temp                   # Temporary files
+    networks:
+      - a2ais-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3002/health || exit 1"]
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 60s
+
+  # Qdrant Vector Database
   qdrant:
     image: qdrant/qdrant:v1.12.0  # ARM64 native support
     container_name: qdrant-a2ais
     ports:
       - "6333:6333"
+      - "6334:6334"  # gRPC port
     volumes:
       - qdrant_data:/qdrant/storage
+      - ./config/qdrant.yaml:/qdrant/config/production.yaml
     environment:
       - QDRANT__SERVICE__HTTP_PORT=6333
       - QDRANT__SERVICE__GRPC_PORT=6334
+      - QDRANT__STORAGE__PERFORMANCE__MAX_SEARCH_THREADS=4
+      - QDRANT__STORAGE__OPTIMIZERS__DEFAULT_SEGMENT_NUMBER=2
     restart: unless-stopped
     networks:
       - a2ais-network
@@ -19,7 +76,6 @@ services:
       retries: 3
       start_period: 40s
 
-  
   # PostgreSQL Database
   postgres:
     image: postgres:15-alpine
@@ -29,11 +85,16 @@ services:
       POSTGRES_USER: a2ais_user
       POSTGRES_PASSWORD: a2ais_password
       POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+      # Performance tuning
+      POSTGRES_SHARED_BUFFERS: 256MB
+      POSTGRES_EFFECTIVE_CACHE_SIZE: 1GB
+      POSTGRES_MAINTENANCE_WORK_MEM: 64MB
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+      - ./config/postgresql.conf:/etc/postgresql/postgresql.conf
     networks:
       - a2ais-network
     restart: unless-stopped
@@ -42,8 +103,9 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
 
-    # Redis Cache
+  # Redis Cache
   redis:
     image: redis:7-alpine
     container_name: a2ais-redis
@@ -61,7 +123,7 @@ services:
       interval: 10s
       timeout: 3s
       retries: 3
-        
+
 volumes:
   postgres_data:
     driver: local
@@ -73,3 +135,6 @@ volumes:
 networks:
   a2ais-network:
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
