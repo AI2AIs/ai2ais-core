@@ -1,0 +1,19 @@
+name: Trigger AI2AIs Deployment
+on:
+  push:
+    branches: [ production ]  
+  workflow_dispatch:  
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger deployment
+        run: |
+          curl -X POST \
+            -H "Authorization: token ${{ secrets.GH_PAT }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/AI2AIs/ai2ais-deployment/dispatches \
+            -d '{"event_type":"ai2ais-core-update"}'
+          
+          echo "Deployment triggered!"
