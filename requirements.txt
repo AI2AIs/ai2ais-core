@@ -15,6 +15,7 @@ portalocker==2.10.1
 
 annotated-types==0.7.0
 anyio==4.9.0
+xai-sdk==1.0.0rc2
 certifi==2025.6.15
 h11==0.16.0
 h2==4.2.0
