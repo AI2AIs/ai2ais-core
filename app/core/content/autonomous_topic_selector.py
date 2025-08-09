@@ -40,7 +40,7 @@ class AutonomousTopicSelector:
     async def ai_select_topic(self, candidate_topics: List[TopicSource] = None) -> Dict:
         """Let AI characters autonomously select the best topic"""
         
-        logger.info("🧠 Starting AI autonomous topic selection...")
+        logger.info("Starting AI autonomous topic selection...")
         
         # 1. Get candidate topics if not provided
         if not candidate_topics:
@@ -53,13 +53,13 @@ class AutonomousTopicSelector:
             logger.warning("⚠️ Not enough fresh topics, using some recent ones")
             fresh_topics = candidate_topics[:5]
         
-        logger.info(f"📋 Evaluating {len(fresh_topics)} candidate topics with AI characters")
+        logger.info(f"valuating {len(fresh_topics)} candidate topics with AI characters")
         
         # 2. Each AI character analyzes each topic
         ai_analyses = {}
         
         for char_id in ["claude", "gpt", "grok"]:
-            logger.info(f"🤖 {char_id} analyzing topics...")
+            logger.info(f"{char_id} analyzing topics...")
             char_analyses = await self._ai_analyze_topics(char_id, fresh_topics[:5])
             ai_analyses[char_id] = char_analyses
         
@@ -74,7 +74,7 @@ class AutonomousTopicSelector:
             "consensus_score": selected_topic_data["consensus_score"]
         })
         
-        logger.info(f"✅ AI selected topic: {selected_topic_data['topic'].title[:50]}...")
+        logger.info(f"AI selected topic: {selected_topic_data['topic'].title[:50]}...")
         
         return selected_topic_data
 
@@ -119,10 +119,10 @@ class AutonomousTopicSelector:
                 
                 analyses.append(analysis)
                 
-                logger.debug(f"   📊 {character_id} topic analysis: interest={analysis.interest_level:.2f}, debate={analysis.debate_potential:.2f}")
+                logger.debug(f"   {character_id} topic analysis: interest={analysis.interest_level:.2f}, debate={analysis.debate_potential:.2f}")
                 
             except Exception as e:
-                logger.error(f"❌ {character_id} failed to analyze topic '{topic.title}': {e}")
+                logger.error(f"{character_id} failed to analyze topic '{topic.title}': {e}")
                 
                 # Fallback analysis
                 fallback_analysis = self._generate_fallback_analysis(character_id, topic)
@@ -319,7 +319,7 @@ class AutonomousTopicSelector:
         
         # Select topic with highest consensus score
         if not topic_scores:
-            logger.error("❌ No topics received any votes!")
+            logger.error("No topics received any votes!")
             return None
         
         best_topic_data = max(topic_scores.values(), key=lambda x: x["consensus_score"])
@@ -331,7 +331,7 @@ class AutonomousTopicSelector:
         )[0]
         
         # Log the AI decision process
-        logger.info(f"🎯 AI Consensus Results:")
+        logger.info(f"  AI Consensus Results:")
         logger.info(f"   Selected Topic: {best_topic_data['topic'].title}")
         logger.info(f"   Consensus Score: {best_topic_data['consensus_score']:.3f}")
         logger.info(f"   Primary Selector: {primary_selector}")
@@ -406,7 +406,7 @@ class AutonomousTopicSelector:
             selected_topic_data = await self.ai_select_topic()
             
             if selected_topic_data:
-                logger.info(f"🤖 AI autonomous topic selection completed!")
+                logger.info(f"  AI autonomous topic selection completed!")
                 logger.info(f"   Topic: {selected_topic_data['topic'].title}")
                 logger.info(f"   Selected by: {selected_topic_data['primary_selector']}")
                 logger.info(f"   Rationale: {selected_topic_data['ai_decision_rationale']}")
@@ -414,7 +414,7 @@ class AutonomousTopicSelector:
             return selected_topic_data
             
         except Exception as e:
-            logger.error(f"❌ AI topic selection failed: {e}")
+            logger.error(f"AI topic selection failed: {e}")
             import traceback
             traceback.print_exc()
             return None

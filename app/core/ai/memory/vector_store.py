@@ -43,7 +43,7 @@ class MemoryVectorStore:
             return True
             
         except Exception as e:
-            logger.error(f"❌ Failed to connect to Qdrant: {e}")
+            logger.error(f"Failed to connect to Qdrant: {e}")
             self.client = None
             self._connection_verified = False
             return False
@@ -55,7 +55,7 @@ class MemoryVectorStore:
             
         try:
             collection_info = self.client.get_collection(self.collection_name)
-            logger.info(f"✅ Collection '{self.collection_name}' exists")
+            logger.info(f"Collection '{self.collection_name}' exists")
             
         except Exception:
             try:
@@ -71,7 +71,7 @@ class MemoryVectorStore:
                 logger.info(f"✅ Recreated collection '{self.collection_name}'")
                 
             except Exception as e:
-                logger.error(f"❌ Collection creation failed: {e}")
+                logger.error(f"Collection creation failed: {e}")
                 raise VectorStoreError(f"Failed to create collection: {e}")
     
     async def store_memory(self, memory_data: Dict) -> bool:
@@ -109,13 +109,13 @@ class MemoryVectorStore:
                 points=[point]
             )
             
-            logger.info(f"✅ Memory stored successfully: {memory_id}")
+            logger.info(f"Memory stored successfully: {memory_id}")
             return True
             
         except VectorStoreError:
             raise  # Re-raise our custom errors
         except Exception as e:
-            logger.error(f"❌ Failed to store memory {memory_data.get('id', 'unknown')}: {e}")
+            logger.error(f"Failed to store memory {memory_data.get('id', 'unknown')}: {e}")
             raise VectorStoreError(f"Failed to store memory: {e}")
     
     async def search_memories(self, 
@@ -177,11 +177,11 @@ class MemoryVectorStore:
                     "id": result.id
                 })
             
-            logger.info(f"🔍 Found {len(formatted_results)} similar memories")
+            logger.info(f"Found {len(formatted_results)} similar memories")
             return formatted_results
             
         except Exception as e:
-            logger.error(f"❌ Memory search failed: {e}")
+            logger.error(f"Memory search failed: {e}")
             raise VectorStoreError(f"Failed to search memories: {e}")
     
     async def get_character_memory_count(self, character_id: str) -> int:
@@ -195,7 +195,7 @@ class MemoryVectorStore:
             return info.points_count or 0
             
         except Exception as e:
-            logger.error(f"❌ Failed to count memories: {e}")
+            logger.error(f"Failed to count memories: {e}")
             raise VectorStoreError(f"Failed to count memories: {e}")
     
     async def test_connection(self) -> bool:

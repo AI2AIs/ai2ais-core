@@ -51,7 +51,7 @@ class GPTAPIClient:
         try:
             response = await self.client.chat.completions.create(
                 model="gpt-4o",
-                max_tokens=150,
+                max_tokens=50,
                 temperature=0.8,
                 messages=[{"role": "user", "content": prompt}]
             )

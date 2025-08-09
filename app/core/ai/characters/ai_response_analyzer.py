@@ -152,7 +152,7 @@ Be honest in your analysis. If they said something boring, score it low. If they
                 analysis_data["intellectual_value"] = max(0.0, min(1.0, float(analysis_data.get("intellectual_value", 0.5))))
                 analysis_data["originality"] = max(0.0, min(1.0, float(analysis_data.get("originality", 0.5))))
                 
-                logger.info(f"✅ Parsed real AI analysis: engagement={analysis_data['engagement_level']:.2f}")
+                logger.info(f"Parsed real AI analysis: engagement={analysis_data['engagement_level']:.2f}")
                 return analysis_data
                 
         except (json.JSONDecodeError, ValueError, KeyError) as e:

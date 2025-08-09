@@ -1,6 +1,8 @@
 # # app/main.py
+from typing import Dict, Optional
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.params import Body
 import uvloop
 import asyncio
 import logging
@@ -117,38 +119,52 @@ async def create_test_session():
    }
 
 @app.post('/api/sessions/{session_id}/start-autonomous')
-async def start_autonomous_session(session_id: str):
+async def start_autonomous_session(session_id: str, request_data: Optional[Dict] = Body(default={})):
    """Start autonomous debate session"""
    try:
        from app.core.sessions.autonomous_manager import autonomous_session_manager
        
        participants = ['claude', 'gpt', 'grok']
-       topic = "Should AI have consciousness?"
-       
+
+       custom_topic = None
+
+       if request_data and "topic" in request_data and request_data["topic"].strip():
+            custom_topic = request_data["topic"].strip()
+            logger.info(f"Using custom topic: {custom_topic}")
+
+       topic_for_db = custom_topic or "Should AI have consciousness?"
+
        # Store session in database
        await db_service.create_session(
            session_id=session_id,
-           topic=topic,
+           topic=topic_for_db,
            participants=participants,
            max_rounds=20
        )
        
        # Start autonomous session
        session = await autonomous_session_manager.start_autonomous_session(
-           session_id, participants
-       )
+            session_id, participants, custom_topic
+        )
        
-       logger.info(f"🎭 Autonomous session started: {session_id}")
+       logger.info(f"Autonomous session started: {session_id}")
        
        return {
-           "success": True,
-           "sessionId": session_id,
-           "participants": participants,
-           "topic": topic,
-           "state": session.state.value,
-           "message": "Autonomous debate session started",
-           "database_stored": True
-       }
+            "success": True,
+            "sessionId": session_id,
+            "participants": participants,
+            "topic": topic_for_db,
+            "custom_topic_used": custom_topic is not None,
+            "topic_locked": True, 
+            "state": session.state.value,
+            "message": f"Autonomous debate session started{'with custom topic' if custom_topic else ''}",
+            "database_stored": True,
+            "topic_info": {
+                "topic": topic_for_db,
+                "will_evolve": False,
+                "source": "custom" if custom_topic else "default"
+            }
+        }
        
    except Exception as e:
        logger.error(f"Failed to start autonomous session: {e}")
@@ -210,11 +226,10 @@ if __name__ == "__main__":
    import uvicorn
    
    # Print startup info
-   print("🚀 Starting A2AIs Core Engine...")
-   print(f"📡 WebSocket Server: ws://localhost:3002")
-   print(f"🌐 HTTP Server: http://localhost:3002")
-   print(f"🎵 TTS Service: {'Google TTS' if settings.GOOGLE_TTS_API_KEY else 'Mock Audio'}")
-   print(f"🎭 Characters: Claude, GPT, Grok")
+   print("Starting A2AIs Core Engine...")
+   print(f"WebSocket Server: ws://localhost:3002")
+   print(f"HTTP Server: http://localhost:3002")
+   print(f"Characters: Claude, GPT, Grok")
    print("=" * 50)
    
    uvicorn.run(

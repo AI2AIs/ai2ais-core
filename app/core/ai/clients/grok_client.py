@@ -22,7 +22,7 @@ class GrokAPIClient:
             return True
             
         if not self.api_key:
-            logger.error("❌ xAI API key not configured")
+            logger.error("xAI API key not configured")
             return False
             
         try:
@@ -37,11 +37,11 @@ class GrokAPIClient:
             test_response = test_chat.sample()
             
             self._initialized = True
-            logger.info("✅ Grok API client initialized")
+            logger.info("Grok API client initialized")
             return True
             
         except Exception as e:
-            logger.error(f"❌ Failed to initialize Grok API: {e}")
+            logger.error(f"Failed to initialize Grok API: {e}")
             return False
     
     async def generate_response(self, prompt: str) -> str:
@@ -63,12 +63,12 @@ class GrokAPIClient:
             
             # Extract content
             raw_text = response.content.strip()
-            logger.info(f"✅ Grok API response: {raw_text[:50]}...")
+            logger.info(f"Grok API response: {raw_text[:50]}...")
             
             return raw_text
             
         except Exception as e:
-            logger.error(f"❌ Grok API call failed: {e}")
+            logger.error(f"Grok API call failed: {e}")
             raise
 
 # Global instance

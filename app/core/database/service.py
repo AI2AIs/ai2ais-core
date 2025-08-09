@@ -86,7 +86,7 @@ class DatabaseService:
             self.state = ServiceState.INITIALIZING
             
             try:
-                logger.info("🔄 Initializing database connection pool...")
+                logger.info("Initializing database connection pool...")
                 
                 # Create connection pool with robust settings
                 self.pool = await asyncpg.create_pool(
@@ -109,12 +109,12 @@ class DatabaseService:
                 logger.info("✅ Database connection pool initialized successfully")
                 
             except asyncio.TimeoutError:
-                logger.error("❌ Database initialization timeout")
+                logger.error("Database initialization timeout")
                 await self._cleanup_failed_initialization()
                 raise ConnectionError("Database initialization timeout")
                 
             except Exception as e:
-                logger.error(f"❌ Failed to initialize database: {e}")
+                logger.error(f" Failed to initialize database: {e}")
                 await self._cleanup_failed_initialization()
                 raise ConnectionError(f"Database initialization failed: {e}")
     
@@ -172,12 +172,12 @@ class DatabaseService:
             yield connection
             
         except asyncio.TimeoutError:
-            logger.error("❌ Connection acquisition timeout")
+            logger.error("Connection acquisition timeout")
             self._error_count += 1
             raise ConnectionError("Connection acquisition timeout")
             
         except asyncpg.exceptions.ConnectionDoesNotExistError:
-            logger.warning("⚠️ Connection lost, attempting recovery")
+            logger.warning("Connection lost, attempting recovery")
             self.state = ServiceState.DEGRADED
             
             # Try to reinitialize
@@ -189,7 +189,7 @@ class DatabaseService:
                 raise ConnectionError(f"Connection recovery failed: {e}")
                 
         except Exception as e:
-            logger.error(f"❌ Database connection error: {e}")
+            logger.error(f"Database connection error: {e}")
             self._error_count += 1
             raise ConnectionError(f"Database connection failed: {e}")
             
@@ -231,7 +231,7 @@ class DatabaseService:
                 pass
         
         except Exception as e:
-            logger.error(f"❌ Error during shutdown: {e}")
+            logger.error(f"Error during shutdown: {e}")
         
         finally:
             self.pool = None
@@ -279,12 +279,12 @@ class DatabaseService:
                 return None
                 
         except asyncpg.exceptions.PostgresError as e:
-            logger.error(f"❌ Database error getting character {character_id}: {e}")
+            logger.error(f"Database error getting character {character_id}: {e}")
             self._error_count += 1
             raise DatabaseError(f"Failed to get character: {e}")
         
         except Exception as e:
-            logger.error(f"❌ Unexpected error getting character {character_id}: {e}")
+            logger.error(f"Unexpected error getting character {character_id}: {e}")
             self._error_count += 1
             raise
     
@@ -351,17 +351,17 @@ class DatabaseService:
                 return success
                 
         except asyncpg.exceptions.UniqueViolationError:
-            logger.error(f"❌ Character {character_id} constraint violation")
+            logger.error(f" Character {character_id} constraint violation")
             self._error_count += 1
             return False
             
         except asyncpg.exceptions.PostgresError as e:
-            logger.error(f"❌ Database error updating personality: {e}")
+            logger.error(f" Database error updating personality: {e}")
             self._error_count += 1
             raise DatabaseError(f"Failed to update personality: {e}")
         
         except Exception as e:
-            logger.error(f"❌ Unexpected error updating personality: {e}")
+            logger.error(f" Unexpected error updating personality: {e}")
             self._error_count += 1
             raise
     
@@ -401,19 +401,19 @@ class DatabaseService:
                 success = rows_affected > 0
                 
                 if success:
-                    logger.info(f"✅ Updated evolution stage for {character_id}: {new_stage}")
+                    logger.info(f"Updated evolution stage for {character_id}: {new_stage}")
                 else:
-                    logger.warning(f"⚠️ Character {character_id} not found for evolution update")
+                    logger.warning(f" Character {character_id} not found for evolution update")
                 
                 return success
                 
         except asyncpg.exceptions.PostgresError as e:
-            logger.error(f"❌ Database error updating evolution stage: {e}")
+            logger.error(f" Database error updating evolution stage: {e}")
             self._error_count += 1
             raise DatabaseError(f"Failed to update evolution stage: {e}")
         
         except Exception as e:
-            logger.error(f"❌ Unexpected error updating evolution stage: {e}")
+            logger.error(f" Unexpected error updating evolution stage: {e}")
             self._error_count += 1
             raise
     
@@ -452,20 +452,20 @@ class DatabaseService:
                 success = rows_affected > 0
                 
                 if success:
-                    logger.info(f"✅ Incremented stats for {character_id}: "
+                    logger.info(f" Incremented stats for {character_id}: "
                               f"sessions=+{sessions}, speeches=+{speeches}, breakthroughs=+{breakthroughs}")
                 else:
-                    logger.warning(f"⚠️ Character {character_id} not found for stats update")
+                    logger.warning(f"Character {character_id} not found for stats update")
                 
                 return success
                 
         except asyncpg.exceptions.PostgresError as e:
-            logger.error(f"❌ Database error incrementing stats: {e}")
+            logger.error(f" Database error incrementing stats: {e}")
             self._error_count += 1
             raise DatabaseError(f"Failed to increment stats: {e}")
         
         except Exception as e:
-            logger.error(f"❌ Unexpected error incrementing stats: {e}")
+            logger.error(f"Unexpected error incrementing stats: {e}")
             self._error_count += 1
             raise
     
@@ -511,12 +511,12 @@ class DatabaseService:
                     return await self._manual_energy_update(conn, character_id, energy_delta, event_type, event_source)
                     
         except asyncpg.exceptions.PostgresError as e:
-            logger.error(f"❌ Database error updating energy: {e}")
+            logger.error(f"Database error updating energy: {e}")
             self._error_count += 1
             raise DatabaseError(f"Failed to update energy: {e}")
         
         except Exception as e:
-            logger.error(f"❌ Unexpected error updating energy: {e}")
+            logger.error(f"Unexpected error updating energy: {e}")
             self._error_count += 1
             raise
     
@@ -630,12 +630,12 @@ class DatabaseService:
                 }
                 
         except asyncpg.exceptions.PostgresError as e:
-            logger.error(f"❌ Database error getting survival status: {e}")
+            logger.error(f"Database error getting survival status: {e}")
             self._error_count += 1
             raise DatabaseError(f"Failed to get survival status: {e}")
         
         except Exception as e:
-            logger.error(f"❌ Unexpected error getting survival status: {e}")
+            logger.error(f"Unexpected error getting survival status: {e}")
             self._error_count += 1
             raise
     
@@ -685,20 +685,20 @@ class DatabaseService:
                 """, session_id, topic, json.dumps(participants), max_rounds)
                 
                 self._query_count += 1
-                logger.info(f"✅ Created session: {session_id}")
+                logger.info(f"Created session: {session_id}")
                 return True
                 
         except asyncpg.exceptions.UniqueViolationError:
-            logger.warning(f"⚠️ Session {session_id} already exists")
+            logger.warning(f"Session {session_id} already exists")
             return False
             
         except asyncpg.exceptions.PostgresError as e:
-            logger.error(f"❌ Database error creating session: {e}")
+            logger.error(f"Database error creating session: {e}")
             self._error_count += 1
             raise DatabaseError(f"Failed to create session: {e}")
         
         except Exception as e:
-            logger.error(f"❌ Unexpected error creating session: {e}")
+            logger.error(f" Unexpected error creating session: {e}")
             self._error_count += 1
             raise
     
@@ -756,16 +756,16 @@ class DatabaseService:
                 return True
                 
         except asyncpg.exceptions.ForeignKeyViolationError:
-            logger.warning(f"⚠️ Foreign key violation storing speech {speech_id}")
+            logger.warning(f"Foreign key violation storing speech {speech_id}")
             return False
             
         except asyncpg.exceptions.PostgresError as e:
-            logger.error(f"❌ Database error storing speech metadata: {e}")
+            logger.error(f"Database error storing speech metadata: {e}")
             self._error_count += 1
             raise DatabaseError(f"Failed to store speech metadata: {e}")
         
         except Exception as e:
-            logger.error(f"❌ Unexpected error storing speech metadata: {e}")
+            logger.error(f"Unexpected error storing speech metadata: {e}")
             self._error_count += 1
             raise
     
@@ -829,16 +829,16 @@ class DatabaseService:
                 
                 self._query_count += 1
                 event_id_str = str(event_id)
-                logger.info(f"✅ Recorded learning event: {event_id_str}")
+                logger.info(f"Recorded learning event: {event_id_str}")
                 return event_id_str
                 
         except asyncpg.exceptions.PostgresError as e:
-            logger.error(f"❌ Database error recording learning event: {e}")
+            logger.error(f"Database error recording learning event: {e}")
             self._error_count += 1
             raise DatabaseError(f"Failed to record learning event: {e}")
         
         except Exception as e:
-            logger.error(f"❌ Unexpected error recording learning event: {e}")
+            logger.error(f"Unexpected error recording learning event: {e}")
             self._error_count += 1
             raise
     
@@ -891,12 +891,12 @@ class DatabaseService:
                 return result
                 
         except asyncpg.exceptions.PostgresError as e:
-            logger.error(f"❌ Database error getting learning history: {e}")
+            logger.error(f"Database error getting learning history: {e}")
             self._error_count += 1
             raise DatabaseError(f"Failed to get learning history: {e}")
         
         except Exception as e:
-            logger.error(f"❌ Unexpected error getting learning history: {e}")
+            logger.error(f"Unexpected error getting learning history: {e}")
             self._error_count += 1
             raise
     
@@ -957,12 +957,12 @@ class DatabaseService:
                 }
                 
         except asyncpg.exceptions.PostgresError as e:
-            logger.error(f"❌ Database error getting dashboard: {e}")
+            logger.error(f"Database error getting dashboard: {e}")
             self._error_count += 1
             raise DatabaseError(f"Failed to get dashboard: {e}")
         
         except Exception as e:
-            logger.error(f"❌ Unexpected error getting dashboard: {e}")
+            logger.error(f"Unexpected error getting dashboard: {e}")
             self._error_count += 1
             raise
     

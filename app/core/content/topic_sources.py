@@ -65,7 +65,7 @@ class RedditTopicFetcher:
                     await asyncio.sleep(1.2)
                     
                 except Exception as e:
-                    logger.warning(f"❌ Failed to fetch r/{subreddit}: {e}")
+                    logger.warning(f"Failed to fetch r/{subreddit}: {e}")
                     continue
         
         # Filter for AI relevance
@@ -92,7 +92,7 @@ class RedditTopicFetcher:
         try:
             async with session.get(url, headers=headers, timeout=10) as response:
                 if response.status != 200:
-                    logger.warning(f"❌ Reddit API returned {response.status} for r/{subreddit}")
+                    logger.warning(f"Reddit API returned {response.status} for r/{subreddit}")
                     return []
                 
                 data = await response.json()
@@ -139,10 +139,10 @@ class RedditTopicFetcher:
                 return topics
                 
         except asyncio.TimeoutError:
-            logger.warning(f"⏰ Timeout fetching r/{subreddit}")
+            logger.warning(f"Timeout fetching r/{subreddit}")
             return []
         except Exception as e:
-            logger.error(f"❌ Error fetching r/{subreddit}: {e}")
+            logger.error(f"Error fetching r/{subreddit}: {e}")
             return []
 
     def _calculate_ai_relevance(self, text: str) -> float:
@@ -367,12 +367,12 @@ class TopicDetector:
     async def test_topic_detection(self):
         """Test the topic detection system"""
         
-        logger.info("🧪 Testing topic detection system...")
+        logger.info(" Testing topic detection system...")
         
         topics = await self.get_trending_topics(count=5, force_refresh=True)
         
         print("\n" + "="*80)
-        print("🎯 TOPIC DETECTION TEST RESULTS")
+        print("TOPIC DETECTION TEST RESULTS")
         print("="*80)
         
         for i, topic in enumerate(topics, 1):
@@ -386,7 +386,7 @@ class TopicDetector:
             print(f"   URL: {topic.url[:50]}...")
         
         print("\n" + "="*80)
-        print(f"✅ Topic detection test completed! Found {len(topics)} topics")
+        print(f" Topic detection test completed! Found {len(topics)} topics")
         
         return topics
 

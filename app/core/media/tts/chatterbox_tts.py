@@ -50,7 +50,9 @@ class AutonomousChatterboxService:
     
     def __init__(self):
         self.api_token = getattr(settings, 'REPLICATE_API_TOKEN', None)
-        
+
+        os.environ['REPLICATE_API_TOKEN'] = self.api_token
+        self.client = replicate.Client(api_token=self.api_token)
         if not self.api_token:
             raise ValueError("REPLICATE_API_TOKEN is required for autonomous voice system")
         
@@ -107,7 +109,7 @@ class AutonomousChatterboxService:
         
         self.character_current_best[character_id] = initial_config
         
-        logger.info(f"🎲 {character_id} initialized with random voice:")
+        logger.info(f"{character_id} initialized with random voice:")
         logger.info(f"   Exaggeration: {initial_config['exaggeration']:.3f}")
         logger.info(f"   CFG Weight: {initial_config['cfg_weight']:.3f}")
         logger.info(f"   Starting completely neutral - will discover personality through evolution")
@@ -424,10 +426,10 @@ class AutonomousChatterboxService:
                 logger.debug(f"   🎭 Using voice cloning: {os.path.basename(reference_path)}")
                 with open(reference_path, 'rb') as audio_file:
                     input_params["audio_prompt"] = audio_file
-                    output = replicate.run("resemble-ai/chatterbox", input=input_params)
+                    output = self.client.run("resemble-ai/chatterbox", input=input_params)
             else:
                 logger.debug(f"   🤖 Using built-in voice")
-                output = replicate.run("resemble-ai/chatterbox", input=input_params)
+                output = self.client.run("resemble-ai/chatterbox", input=input_params)
             
             if not output:
                 raise Exception("Chatterbox returned no output")

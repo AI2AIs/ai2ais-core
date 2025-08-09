@@ -74,11 +74,11 @@ class EmbeddingService:
                 for key in keys[:100]:
                     del self._embedding_cache[key]
             
-            logger.info(f"✅ Real embedding generated: {len(embedding)} dims")
+            logger.info(f"Real embedding generated: {len(embedding)} dims")
             return embedding
             
         except Exception as e:
-            logger.error(f"❌ Embedding failed: {e}")
+            logger.error(f"Embedding failed: {e}")
             return self._generate_mock_embedding(text)
     
     async def embed_conversation(self, 
@@ -145,5 +145,5 @@ class EmbeddingService:
         except:
             return False
 
-# ✅ SAFE GLOBAL INSTANCE
+#  SAFE GLOBAL INSTANCE
 embedding_service = EmbeddingService()

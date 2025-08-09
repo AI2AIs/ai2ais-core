@@ -67,10 +67,10 @@ class EnhancedCharacterMemory:
             await self._load_recent_memories()
             
             self.memory_initialized = True
-            logger.info(f"✅ Enhanced memory initialized for {self.character_id}")
+            logger.info(f"Enhanced memory initialized for {self.character_id}")
             
         except Exception as e:
-            logger.error(f"❌ Failed to initialize enhanced memory: {e}")
+            logger.error(f"Failed to initialize enhanced memory: {e}")
             self.memory_initialized = True  # Continue without enhanced features
     
     async def store_conversation_memory(self, session_id: str, speech_text: str, 
@@ -108,7 +108,7 @@ class EnhancedCharacterMemory:
                 except Exception as qdrant_error:
                     logger.warning(f"Qdrant attempt {attempt + 1} failed: {qdrant_error}")
                     if attempt == 1:  # Last attempt
-                        logger.error(f"❌ All Qdrant attempts failed for {memory_id}")
+                        logger.error(f"All Qdrant attempts failed for {memory_id}")
             
             # Step 2: Store in PostgreSQL with retry
             for attempt in range(2):
@@ -129,7 +129,7 @@ class EnhancedCharacterMemory:
                 except Exception as db_error:
                     logger.warning(f"PostgreSQL attempt {attempt + 1} failed: {db_error}")
                     if attempt == 1:
-                        logger.error(f"❌ All PostgreSQL attempts failed for {memory_id}")
+                        logger.error(f"All PostgreSQL attempts failed for {memory_id}")
             
             # Step 3: Update character stats (best effort)
             try:
@@ -157,16 +157,16 @@ class EnhancedCharacterMemory:
             
             # Determine success level
             if qdrant_success and db_success:
-                logger.info(f"✅ Fully stored conversation memory: {memory_id}")
+                logger.info(f"Fully stored conversation memory: {memory_id}")
             elif qdrant_success or db_success:
-                logger.warning(f"⚠️ Partially stored conversation memory: {memory_id}")
+                logger.warning(f"Partially stored conversation memory: {memory_id}")
             else:
-                logger.error(f"❌ Failed to store conversation memory: {memory_id}")
+                logger.error(f"Failed to store conversation memory: {memory_id}")
             
             return memory_id
             
         except Exception as e:
-            logger.error(f"❌ Critical error storing conversation memory: {e}")
+            logger.error(f"Critical error storing conversation memory: {e}")
             return None
     
     async def store_learning_event(self,
@@ -210,13 +210,13 @@ class EnhancedCharacterMemory:
             )
             
             if qdrant_success and db_event_id:
-                logger.info(f"✅ Stored learning event: {event_id}")
+                logger.info(f"Stored learning event: {event_id}")
                 return event_id
             
             return None
             
         except Exception as e:
-            logger.error(f"❌ Failed to store learning event: {e}")
+            logger.error(f"Failed to store learning event: {e}")
             return None
     
     async def find_similar_conversations(self, current_text: str, limit: int = 5) -> List[Dict]:
@@ -233,7 +233,7 @@ class EnhancedCharacterMemory:
             )
             
             if not similar_vectors:
-                logger.info(f"🔍 No similar memories found for {self.character_id}")
+                logger.info(f"No similar memories found for {self.character_id}")
                 self.cache_misses += 1
                 return []
             
@@ -276,7 +276,7 @@ class EnhancedCharacterMemory:
             return full_conversations
             
         except Exception as e:
-            logger.error(f"❌ Failed to find similar conversations: {e}")
+            logger.error(f"Failed to find similar conversations: {e}")
             self.cache_misses += 1
             
             # FALLBACK: Return empty list but don't crash
@@ -325,7 +325,7 @@ class EnhancedCharacterMemory:
                 return result
                 
         except Exception as e:
-            logger.error(f"❌ Failed to get relationship patterns: {e}")
+            logger.error(f"Failed to get relationship patterns: {e}")
             return {}
     
     async def get_character_evolution_data(self) -> Dict:
@@ -334,7 +334,7 @@ class EnhancedCharacterMemory:
             char_data = await db_service.get_character(self.character_id)
             return char_data if char_data else {}
         except Exception as e:
-            logger.error(f"❌ Failed to get character evolution data: {e}")
+            logger.error(f"Failed to get character evolution data: {e}")
             return {}
     
     async def update_personality_traits(self, trait_changes: Dict[str, float]) -> bool:
@@ -345,7 +345,7 @@ class EnhancedCharacterMemory:
                 personality_changes=trait_changes
             )
         except Exception as e:
-            logger.error(f"❌ Failed to update personality traits: {e}")
+            logger.error(f"Failed to update personality traits: {e}")
             return False
     
     async def get_memory_stats(self) -> Dict:
@@ -370,7 +370,7 @@ class EnhancedCharacterMemory:
             }
             
         except Exception as e:
-            logger.error(f"❌ Failed to get memory stats: {e}")
+            logger.error(f"Failed to get memory stats: {e}")
             return {"error": str(e)}
     
     # HELPER METHODS
@@ -400,7 +400,7 @@ class EnhancedCharacterMemory:
                     )
                     self.recent_conversations.append(memory_entry)
             
-            logger.info(f"📚 Loaded {len(self.recent_conversations)} recent memories to cache")
+            logger.info(f"Loaded {len(self.recent_conversations)} recent memories to cache")
             
         except Exception as e:
             logger.warning(f"Could not load recent memories: {e}")

@@ -62,10 +62,10 @@ class CharacterMemoryManager:
             await self._initialize_relationship_patterns()
             
             self.memory_initialized = True
-            logger.info(f"✅ Memory initialized for {self.character_id}")
+            logger.info(f"Memory initialized for {self.character_id}")
             
         except Exception as e:
-            logger.error(f"❌ Failed to initialize memory for {self.character_id}: {e}")
+            logger.error(f"Failed to initialize memory for {self.character_id}: {e}")
             self.memory_initialized = True  # Continue without memory
     
     async def store_conversation(self, 
@@ -118,13 +118,13 @@ class CharacterMemoryManager:
                 # Update topic expertise
                 self._update_topic_expertise(topic, emotion)
                 
-                logger.info(f"✅ Stored conversation memory for {self.character_id}")
+                logger.info(f"Stored conversation memory for {self.character_id}")
                 return True
             
             return False
             
         except Exception as e:
-            logger.error(f"❌ Failed to store conversation for {self.character_id}: {e}")
+            logger.error(f"Failed to store conversation for {self.character_id}: {e}")
             return False
     
     async def recall_similar_conversations(self, 
@@ -155,11 +155,11 @@ class CharacterMemoryManager:
                 limit=limit
             )
             
-            logger.info(f"🧠 Recalled {len(similar_memories)} similar conversations for {self.character_id}")
+            logger.info(f"Recalled {len(similar_memories)} similar conversations for {self.character_id}")
             return similar_memories
             
         except Exception as e:
-            logger.error(f"❌ Failed to recall memories for {self.character_id}: {e}")
+            logger.error(f"Failed to recall memories for {self.character_id}: {e}")
             return []
     
     async def get_relationship_pattern(self, other_character: str) -> Dict:

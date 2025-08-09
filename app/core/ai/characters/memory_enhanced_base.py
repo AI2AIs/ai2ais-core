@@ -93,7 +93,7 @@ class MemoryEnhancedBaseCharacter(BaseCharacter):
                         await asyncio.wait_for(self._initialization_task, timeout=10.0)
                         return self._memory_state == MemoryState.READY
                     except asyncio.TimeoutError:
-                        logger.error(f"❌ Memory initialization timeout for {self.character_id}")
+                        logger.error(f"Memory initialization timeout for {self.character_id}")
                         self._memory_state = MemoryState.FAILED
                         self._last_failed_init = time.time()
                         return False
@@ -116,16 +116,16 @@ class MemoryEnhancedBaseCharacter(BaseCharacter):
                 if success:
                     self._memory_state = MemoryState.READY
                     self._last_successful_init = time.time()
-                    logger.info(f"✅ Memory initialized for {self.character_id} (attempt {self._init_attempts})")
+                    logger.info(f"Memory initialized for {self.character_id} (attempt {self._init_attempts})")
                     return True
                 else:
                     self._memory_state = MemoryState.FAILED
                     self._last_failed_init = time.time()
-                    logger.error(f"❌ Memory initialization failed for {self.character_id}")
+                    logger.error(f"Memory initialization failed for {self.character_id}")
                     return False
                     
             except asyncio.TimeoutError:
-                logger.error(f"❌ Memory initialization timeout for {self.character_id}")
+                logger.error(f"Memory initialization timeout for {self.character_id}")
                 self._memory_state = MemoryState.FAILED
                 self._last_failed_init = time.time()
                 if self._initialization_task:
@@ -133,7 +133,7 @@ class MemoryEnhancedBaseCharacter(BaseCharacter):
                 return False
             
             except Exception as e:
-                logger.error(f"❌ Memory initialization error for {self.character_id}: {e}")
+                logger.error(f"Memory initialization error for {self.character_id}: {e}")
                 self._memory_state = MemoryState.FAILED
                 self._last_failed_init = time.time()
                 return False
@@ -151,7 +151,7 @@ class MemoryEnhancedBaseCharacter(BaseCharacter):
             return True
             
         except Exception as e:
-            logger.error(f"❌ Failed to perform memory initialization: {e}")
+            logger.error(f"Failed to perform memory initialization: {e}")
             return False
     
     async def _load_personality_from_database(self):
@@ -174,10 +174,10 @@ class MemoryEnhancedBaseCharacter(BaseCharacter):
                 
                 self._db_personality_loaded = True
                 
-                logger.debug(f"✅ Loaded personality from database: {self.character_id}")
+                logger.debug(f"Loaded personality from database: {self.character_id}")
                 logger.debug(f"   Stage: {self.evolution_stage}, Energy: {self.life_energy}")
             else:
-                logger.info(f"ℹ️ No existing personality data for {self.character_id}, using defaults")
+                logger.info(f"ℹNo existing personality data for {self.character_id}, using defaults")
                 
         except Exception as e:
             logger.warning(f"Could not load personality from database for {self.character_id}: {e}")
@@ -187,7 +187,7 @@ class MemoryEnhancedBaseCharacter(BaseCharacter):
         self._current_session_id = session_id
         self._session_start_time = time.time()
         self._pending_peer_reactions = []  # Reset for new session
-        logger.info(f"📝 Started session {session_id} for {self.character_id}")
+        logger.info(f"Started session {session_id} for {self.character_id}")
     
     # Core AI-to-AI feedback methods
     async def analyze_peer_response(self, 
@@ -198,7 +198,7 @@ class MemoryEnhancedBaseCharacter(BaseCharacter):
                                   context: Dict = None) -> AIReaction:
         """Analyze another AI's response from this character's perspective"""
         
-        logger.info(f"🔍 {self.character_id} analyzing {peer_character_id}'s response")
+        logger.info(f"{self.character_id} analyzing {peer_character_id}'s response")
         
         reaction = await self.response_analyzer.analyze_response(
             other_character_id=peer_character_id,
@@ -227,7 +227,7 @@ class MemoryEnhancedBaseCharacter(BaseCharacter):
         
         self._pending_peer_reactions.extend(peer_reactions)
         
-        logger.info(f"📥 {self.character_id} received {len(peer_reactions)} peer reactions")
+        logger.info(f"{self.character_id} received {len(peer_reactions)} peer reactions")
         
         # Log peer feedback summary
         for reaction in peer_reactions:
@@ -255,7 +255,7 @@ class MemoryEnhancedBaseCharacter(BaseCharacter):
         # Combine peer quality with response engagement
         final_score = (peer_average * 0.7) + (response_rate * 0.3)
         
-        logger.info(f"📊 {self.character_id} peer feedback score: "
+        logger.info(f"{self.character_id} peer feedback score: "
                    f"quality={peer_average:.2f}, engagement={response_rate:.2f}, "
                    f"final={final_score:.2f}")
         
@@ -290,7 +290,7 @@ class MemoryEnhancedBaseCharacter(BaseCharacter):
             try:
                 await self._store_conversation_with_persistence(response, topic, enhanced_context)
             except Exception as e:
-                logger.warning(f"⚠️ Failed to store conversation in memory: {e}")
+                logger.warning(f"Failed to store conversation in memory: {e}")
         
         return response
     
@@ -325,7 +325,7 @@ class MemoryEnhancedBaseCharacter(BaseCharacter):
             }
         })
         
-        logger.debug(f"🔄 Built fallback context for {self.character_id}")
+        logger.debug(f"Built fallback context for {self.character_id}")
         return fallback_context
     
     async def _build_enhanced_context(self, topic: str, context: Dict = None) -> Dict:
@@ -421,14 +421,14 @@ class MemoryEnhancedBaseCharacter(BaseCharacter):
                 "peer_feedback": peer_feedback_context
             })
             
-            logger.debug(f"🧠 Enhanced context built for {self.character_id}")
+            logger.debug(f"   Enhanced context built for {self.character_id}")
             logger.debug(f"   Similar memories: {len(similar_memories)}")
             logger.debug(f"   Relationship patterns: {len(relationship_patterns)}")
             logger.debug(f"   Adaptive sessions: {adaptive_context['sessions_learned_from']}")
             logger.debug(f"   Peer reactions: {peer_feedback_context.get('peer_count', 0)}")
             
         except Exception as e:
-            logger.error(f"❌ Failed to build enhanced context: {e}")
+            logger.error(f"Failed to build enhanced context: {e}")
         
         return enhanced_context
     
@@ -485,11 +485,11 @@ class MemoryEnhancedBaseCharacter(BaseCharacter):
             
             conversation_context = "\n".join(context_lines)
             
-            logger.debug(f"🎭 Conversation context for {self.character_id}:\n{conversation_context}")
+            logger.debug(f"Conversation context for {self.character_id}:\n{conversation_context}")
             return conversation_context
             
         except Exception as e:
-            logger.error(f"❌ Failed to get conversation context: {e}")
+            logger.error(f"Failed to get conversation context: {e}")
             return "This is the start of our conversation."
     
     async def _get_historical_peer_feedback_summary(self) -> Dict:
@@ -513,7 +513,7 @@ class MemoryEnhancedBaseCharacter(BaseCharacter):
             }
             
         except Exception as e:
-            logger.error(f"❌ Failed to get historical peer feedback: {e}")
+            logger.error(f"Failed to get historical peer feedback: {e}")
             return {"avg_engagement": 0.5, "avg_agreement": 0.5, "peer_count": 0}
         
         
@@ -576,12 +576,12 @@ class MemoryEnhancedBaseCharacter(BaseCharacter):
             )
             
             if memory_id:
-                logger.info(f"✅ Stored conversation with persistence: {memory_id}")
+                logger.info(f"Stored conversation with persistence: {memory_id}")
             else:
-                logger.warning(f"⚠️ Failed to store conversation in memory for {self.character_id}")
+                logger.warning(f"Failed to store conversation in memory for {self.character_id}")
             
         except Exception as e:
-            logger.error(f"❌ Failed to store conversation with persistence: {e}")
+            logger.error(f"Failed to store conversation with persistence: {e}")
     
     def _apply_enhanced_memory_influence(self, response: Dict, context: Dict) -> Optional[Dict]:
         """Apply memory influence using enhanced system"""
@@ -602,7 +602,7 @@ class MemoryEnhancedBaseCharacter(BaseCharacter):
                     past_emotion = most_similar.get("emotion", "neutral")
                     if past_emotion != "neutral" and influenced_emotion == "neutral":
                         influenced_emotion = past_emotion
-                        logger.debug(f"🧠 Applied similar memory emotion: {past_emotion}")
+                        logger.debug(f"Applied similar memory emotion: {past_emotion}")
             
             # 2. Evolution stage influence
             evolution_stage = evolution_data.get("evolution_stage", "initial_learning")
@@ -633,7 +633,7 @@ class MemoryEnhancedBaseCharacter(BaseCharacter):
             }
             
         except Exception as e:
-            logger.error(f"❌ Failed to apply enhanced memory influence: {e}")
+            logger.error(f"Failed to apply enhanced memory influence: {e}")
             return None
     
     def _apply_database_backed_adaptive_influence(self, response: Dict, context: Dict) -> Optional[Dict]:
@@ -683,7 +683,7 @@ class MemoryEnhancedBaseCharacter(BaseCharacter):
             }
             
         except Exception as e:
-            logger.error(f"❌ Failed to apply database-backed adaptive influence: {e}")
+            logger.error(f"Failed to apply database-backed adaptive influence: {e}")
             return None
     
     async def end_session_with_database_persistence(self, 
@@ -697,7 +697,7 @@ class MemoryEnhancedBaseCharacter(BaseCharacter):
         # Only proceed if memory is ready
         memory_ready = await self.initialize_memory()
         if not memory_ready:
-            logger.warning(f"⚠️ Memory not ready for session end: {self.character_id}")
+            logger.warning(f"Memory not ready for session end: {self.character_id}")
             return
         
         try:
@@ -720,7 +720,7 @@ class MemoryEnhancedBaseCharacter(BaseCharacter):
             
             # SESSION FEEDBACK TO ADAPTIVE TRAITS
             self.adaptive_traits.add_session_feedback(session_feedback)
-            logger.info(f"✅ Added session feedback to adaptive traits: score={final_score:.2f}")
+            logger.info(f"Added session feedback to adaptive traits: score={final_score:.2f}")
             
             # Store learning event in database
             learning_event_id = await self.enhanced_memory.store_learning_event(
@@ -751,9 +751,9 @@ class MemoryEnhancedBaseCharacter(BaseCharacter):
                 event_source="autonomous"
             )
             
-            logger.info(f"✅ Session ended with complete learning integration: {session_id}")
-            logger.info(f"📊 Learning event: {learning_event_id}, Energy delta: {energy_delta}")
-            logger.info(f"🧠 Adaptive traits updated: {len(self.adaptive_traits.recent_feedback)} total sessions")
+            logger.info(f"Session ended with complete learning integration: {session_id}")
+            logger.info(f"Learning event: {learning_event_id}, Energy delta: {energy_delta}")
+            logger.info(f"Adaptive traits updated: {len(self.adaptive_traits.recent_feedback)} total sessions")
             
             # Reset session tracking
             self._current_session_id = None
@@ -761,7 +761,7 @@ class MemoryEnhancedBaseCharacter(BaseCharacter):
             self._pending_peer_reactions = []
             
         except Exception as e:
-            logger.error(f"❌ Failed to end session with persistence: {e}")
+            logger.error(f"Failed to end session with persistence: {e}")
             import traceback
             traceback.print_exc()
     
@@ -805,7 +805,7 @@ class MemoryEnhancedBaseCharacter(BaseCharacter):
                 self.evolution_stage = new_stage
                 self.maturity_level = new_maturity
                 
-                logger.info(f"🎉 Character evolution: {self.character_id} → {new_stage}")
+                logger.info(f"Character evolution: {self.character_id} → {new_stage}")
             
             # Update personality traits based on performance
             if performance_score > 0.7:
@@ -814,7 +814,7 @@ class MemoryEnhancedBaseCharacter(BaseCharacter):
                     await self.enhanced_memory.update_personality_traits(trait_adjustments)
             
         except Exception as e:
-            logger.error(f"❌ Failed to update character evolution: {e}")
+            logger.error(f"Failed to update character evolution: {e}")
     
     def _calculate_energy_change(self, performance_score: float) -> float:
         """Calculate energy change based on performance"""
@@ -963,7 +963,7 @@ class MemoryEnhancedBaseCharacter(BaseCharacter):
             return shift_detected
             
         except Exception as e:
-            logger.error(f"❌ Topic shift detection failed: {e}")
+            logger.error(f"Topic shift detection failed: {e}")
             return False
         
     # PUBLIC PROPERTIES FOR MONITORING
