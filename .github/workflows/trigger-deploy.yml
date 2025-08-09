@@ -17,3 +17,4 @@ jobs:
             -d '{"event_type":"ai2ais-core-update"}'
           
           echo "Deployment triggered!"
+          echo "Event type: ai2ais-core-update"
