@@ -1,0 +1,61 @@
+[tool.poetry]
+name = "ai2ais-core"
+version = "0.1.0"
+description = "Core library for AI2AIS, providing essential functionalities and integrations."
+authors = ["zeroptis zeroptis@ai2ais.fun"]
+packages = [{include = "app"}]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+fastapi = "^0.115.14"
+uvicorn = {extras = ["standard"], version = "^0.24.0"}
+uvloop = "^0.21.0"
+websockets = "^12.0"
+pydantic = "^2.5.0"
+pydantic-settings = "^2.1.0"
+python-dotenv = "^1.0.0"
+aiofiles = "^23.2.0"
+numpy = "1.26.4"
+
+# TTS dependencies
+google-cloud-texttospeech = "^2.16.0"
+requests = "^2.31.0"
+httpx = "^0.28.1"
+replicate = "^1.0.7"
+
+# Vector Database & Embeddings
+qdrant-client = "1.12.0"
+openai = "1.93.0"
+anthropic = "0.56.0"
+xai-sdk = "1.0.0rc2"
+
+# Memory & Caching
+redis = "5.0.4"
+aioredis = "2.0.1"
+asyncpg = "^0.30.0"
+psycopg2-binary = "^2.9.7"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0.0"
+pytest-cov = "^4.1.0"
+pytest-asyncio = "^0.23.5"
+black = "^23.11.0"
+isort = "^5.12.0"
+flake8 = "^6.1.0"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+addopts = "-v"
+testpaths = ["tests"]
+python_files = "test_*.py"
+
+[tool.black]
+line-length = 88
+target-version = ['py39']
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
