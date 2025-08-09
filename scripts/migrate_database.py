@@ -26,9 +26,9 @@ class DatabaseMigrator:
         """Connect to PostgreSQL"""
         try:
             self.connection = await asyncpg.connect(self.db_url)
-            logger.info("✅ Connected to PostgreSQL")
+            logger.info("Connected to PostgreSQL")
         except Exception as e:
-            logger.error(f"❌ Failed to connect to PostgreSQL: {e}")
+            logger.error(f"Failed to connect to PostgreSQL: {e}")
             raise
     
     async def disconnect(self):
@@ -132,7 +132,7 @@ class DatabaseMigrator:
         """
         
         await self.connection.execute(sql)
-        logger.info("✅ Created character_relationships table")
+        logger.info("Created character_relationships table")
     
     async def create_autonomous_sessions_table(self):
         """Create autonomous_sessions table"""
@@ -174,7 +174,7 @@ class DatabaseMigrator:
         """
         
         await self.connection.execute(sql)
-        logger.info("✅ Created autonomous_sessions table")
+        logger.info("Created autonomous_sessions table")
     
     async def create_session_speeches_table(self):
         """Create session_speeches table"""
@@ -217,7 +217,7 @@ class DatabaseMigrator:
         """
         
         await self.connection.execute(sql)
-        logger.info("✅ Created session_speeches table")
+        logger.info("Created session_speeches table")
     
     async def create_learning_events_table(self):
         """Create learning_events table - NO TEXT DUPLICATION"""
@@ -262,10 +262,10 @@ class DatabaseMigrator:
         """
         
         await self.connection.execute(sql)
-        logger.info("✅ Created learning_events table")
+        logger.info("Created learning_events table")
     
     async def create_stored_procedures(self):
-        """🆕 Create stored procedures - MISSING FUNCTIONS"""
+        """Create stored procedures - MISSING FUNCTIONS"""
         
         # 1. Update character energy function
         energy_function = """
@@ -309,7 +309,7 @@ class DatabaseMigrator:
         """
         
         await self.connection.execute(energy_function)
-        logger.info("✅ Created update_character_energy function")
+        logger.info("Created update_character_energy function")
         
         # 2. Update relationship patterns function
         relationship_function = """
@@ -343,7 +343,7 @@ class DatabaseMigrator:
         """
         
         await self.connection.execute(relationship_function)
-        logger.info("✅ Created update_relationship_patterns function")
+        logger.info("Created update_relationship_patterns function")
     
     async def create_indexes(self):
         """Create indexes for performance"""
@@ -358,7 +358,7 @@ class DatabaseMigrator:
             "CREATE INDEX IF NOT EXISTS idx_learning_events_character ON learning_events(character_id);",
             "CREATE INDEX IF NOT EXISTS idx_learning_events_type ON learning_events(event_type);",
             "CREATE INDEX IF NOT EXISTS idx_learning_events_qdrant_ref ON learning_events(qdrant_memory_id);",
-            # 🆕 NEW INDEXES
+            # NEW INDEXES
             "CREATE INDEX IF NOT EXISTS idx_character_relationships_a ON character_relationships(character_a);",
             "CREATE INDEX IF NOT EXISTS idx_character_relationships_b ON character_relationships(character_b);",
             "CREATE INDEX IF NOT EXISTS idx_character_relationships_type ON character_relationships(relationship_type);",
@@ -367,7 +367,7 @@ class DatabaseMigrator:
         for index_sql in indexes:
             await self.connection.execute(index_sql)
         
-        logger.info("✅ Created database indexes")
+        logger.info("Created database indexes")
     
     async def seed_initial_characters(self):
         """Seed initial character data"""
@@ -414,12 +414,12 @@ class DatabaseMigrator:
             char['analytical_score'], char['creative_score'], 
             char['assertive_score'], char['empathetic_score'], char['skeptical_score'])
         
-        logger.info("✅ Seeded initial character data")
+        logger.info("Seeded initial character data")
     
     async def run_migration(self):
         """Run complete migration"""
         
-        logger.info("🚀 Starting A2AIs COMPLETE database migration...")
+        logger.info("Starting A2AIs COMPLETE database migration...")
         
         try:
             await self.connect()
@@ -445,7 +445,7 @@ class DatabaseMigrator:
             logger.info("⚙️ Created functions: update_character_energy, update_relationship_patterns")
             
         except Exception as e:
-            logger.error(f"❌ Migration failed: {e}")
+            logger.error(f"Migration failed: {e}")
             raise
         finally:
             await self.disconnect()
