@@ -25,23 +25,17 @@ RUN ARCH=$(uname -m) && \
     echo "Detected architecture: $ARCH" && \
     mkdir -p bin && \
     if [ "$ARCH" = "x86_64" ] || [ "$ARCH" = "amd64" ]; then \
-        echo "Downloading rhubarb for x86_64/AMD64 Linux..." && \
-        wget -q https://github.com/DanielSWolf/rhubarb-lip-sync/releases/download/v1.14.0/rhubarb-lip-sync-1.14.0-linux.zip && \
-        unzip -q rhubarb-lip-sync-1.14.0-linux.zip && \
-        cp rhubarb-lip-sync-1.14.0-linux/rhubarb bin/ && \
-        rm -rf rhubarb-lip-sync-1.14.0-linux* && \
-        echo "x86_64/AMD64 rhubarb binary installed"; \
+        echo "Downloading rhubarb v1.13.0 for x86_64/AMD64 Linux..." && \
+        wget -q https://github.com/DanielSWolf/rhubarb-lip-sync/releases/download/v1.13.0/rhubarb-lip-sync-1.13.0-linux.zip && \
+        unzip -q rhubarb-lip-sync-1.13.0-linux.zip && \
+        cp rhubarb-lip-sync-1.13.0-linux/rhubarb bin/ && \
+        rm -rf rhubarb-lip-sync-1.13.0-linux* && \
+        echo "x86_64/AMD64 rhubarb v1.13.0 binary installed"; \
     elif [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then \
-        echo "ARM64 detected - downloading Linux version and hoping for compatibility..." && \
-        wget -q https://github.com/DanielSWolf/rhubarb-lip-sync/releases/download/v1.14.0/rhubarb-lip-sync-1.14.0-linux.zip && \
-        unzip -q rhubarb-lip-sync-1.14.0-linux.zip && \
-        cp rhubarb-lip-sync-1.14.0-linux/rhubarb bin/ && \
-        rm -rf rhubarb-lip-sync-1.14.0-linux* && \
-        echo "ARM64 rhubarb binary installed" || \
-        (echo "ARM64 rhubarb failed, creating fallback..." && \
-         echo '#!/bin/bash\necho "TTS disabled - ARM64 compatibility issue"' > bin/rhubarb); \
+        echo "ARM64 detected - creating fallback (no ARM64 rhubarb available)..." && \
+        echo '#!/bin/bash\necho "TTS disabled - ARM64 not supported by rhubarb"' > bin/rhubarb; \
     else \
-        echo "❌ Unsupported architecture: $ARCH - creating fallback rhubarb binary" && \
+        echo "Unsupported architecture: $ARCH - creating fallback rhubarb binary" && \
         echo '#!/bin/bash\necho "TTS disabled for unsupported architecture: '$ARCH'"' > bin/rhubarb; \
     fi && \
     chmod +x bin/rhubarb && \
