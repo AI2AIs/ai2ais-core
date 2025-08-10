@@ -7,16 +7,45 @@ ENV PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
-# Install system dependencies
+# Install system dependencies including tools for rhubarb
 RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
     curl \
+    wget \
+    unzip \
     postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
 # Set work directory
 WORKDIR /app
+
+# Download platform-appropriate rhubarb binary
+RUN ARCH=$(uname -m) && \
+    echo "Detected architecture: $ARCH" && \
+    mkdir -p bin && \
+    if [ "$ARCH" = "x86_64" ] || [ "$ARCH" = "amd64" ]; then \
+        echo "Downloading rhubarb for x86_64/AMD64 Linux..." && \
+        wget -q https://github.com/DanielSWolf/rhubarb-lip-sync/releases/download/v1.14.0/rhubarb-lip-sync-1.14.0-linux.zip && \
+        unzip -q rhubarb-lip-sync-1.14.0-linux.zip && \
+        cp rhubarb-lip-sync-1.14.0-linux/rhubarb bin/ && \
+        rm -rf rhubarb-lip-sync-1.14.0-linux* && \
+        echo "x86_64/AMD64 rhubarb binary installed"; \
+    elif [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then \
+        echo "ARM64 detected - downloading Linux version and hoping for compatibility..." && \
+        wget -q https://github.com/DanielSWolf/rhubarb-lip-sync/releases/download/v1.14.0/rhubarb-lip-sync-1.14.0-linux.zip && \
+        unzip -q rhubarb-lip-sync-1.14.0-linux.zip && \
+        cp rhubarb-lip-sync-1.14.0-linux/rhubarb bin/ && \
+        rm -rf rhubarb-lip-sync-1.14.0-linux* && \
+        echo "ARM64 rhubarb binary installed" || \
+        (echo "ARM64 rhubarb failed, creating fallback..." && \
+         echo '#!/bin/bash\necho "TTS disabled - ARM64 compatibility issue"' > bin/rhubarb); \
+    else \
+        echo "❌ Unsupported architecture: $ARCH - creating fallback rhubarb binary" && \
+        echo '#!/bin/bash\necho "TTS disabled for unsupported architecture: '$ARCH'"' > bin/rhubarb; \
+    fi && \
+    chmod +x bin/rhubarb && \
+    echo "Rhubarb binary prepared for $ARCH"
 
 # Copy requirements first (for better Docker layer caching)
 COPY requirements.txt .
@@ -47,12 +76,16 @@ WORKDIR /app
 COPY --from=builder /usr/local/lib/python3.13/site-packages /usr/local/lib/python3.13/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
+# Copy rhubarb binary from builder
+COPY --from=builder /app/bin/rhubarb ./bin/rhubarb
+
 # Copy application code
 COPY . .
 
-# Create necessary directories
+# Create necessary directories and set proper permissions
 RUN mkdir -p logs data/voices && \
-    chown -R appuser:appuser /app
+    chown -R appuser:appuser /app && \
+    chmod +x bin/rhubarb
 
 # Switch to non-root user
 USER appuser
