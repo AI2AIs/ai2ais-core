@@ -55,8 +55,10 @@ COPY . .
 # Create necessary directories and set permissions
 RUN mkdir -p logs data/voices temp && \
     chmod +x /app/bin/rhubarb && \
+    # Ensure resource files are readable
+    find /app/bin/res -type f -exec chmod 644 {} \; 2>/dev/null || true && \
     chown -R appuser:appuser /app
-
+    
 # Switch to non-root user
 USER appuser
 
