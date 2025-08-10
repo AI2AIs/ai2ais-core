@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 class DatabaseMigrator:
     def __init__(self):
-        self.db_url = 'postgresql://a2ais_user:a2ais_password@localhost:5432/a2ais_db'
+        self.db_url = 'postgresql://a2ais_user:a2ais_password@postgres:5432/a2ais_db'
         self.connection = None
     
     async def connect(self):
