@@ -18,7 +18,7 @@ RUN apt-get update && apt-get install -y \
 # Set work directory
 WORKDIR /app
 
-# Copy requirements first (for better Docker layer caching)
+# Copy requirements first
 COPY requirements.txt .
 
 # Install Python dependencies
@@ -31,10 +31,12 @@ FROM python:3.13-slim as production
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
 
-# Install runtime dependencies
+# Install runtime dependencies 
 RUN apt-get update && apt-get install -y \
     curl \
     postgresql-client \
+    libsndfile1 \
+    libasound2 \
     && rm -rf /var/lib/apt/lists/*
 
 # Create app user (security best practice)
@@ -47,11 +49,12 @@ WORKDIR /app
 COPY --from=builder /usr/local/lib/python3.13/site-packages /usr/local/lib/python3.13/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
-# Copy application code
+# Copy application code (includes bin/rhubarb)
 COPY . .
 
-# Create necessary directories
-RUN mkdir -p logs data/voices && \
+# Create necessary directories and set permissions
+RUN mkdir -p logs data/voices temp && \
+    chmod +x /app/bin/rhubarb && \
     chown -R appuser:appuser /app
 
 # Switch to non-root user
