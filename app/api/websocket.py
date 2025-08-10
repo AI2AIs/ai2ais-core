@@ -186,39 +186,43 @@ async def get_or_create_session_for_frontend() -> str:
         if best_session:
             logger.info(f"🎯 Using existing WebSocket session: {best_session}")
             return best_session
+        
+    fallback_id = f"waiting-{int(time.time())}"
+    logger.info(f"No active sessions, created waiting session: {fallback_id}")
+    return fallback_id
     
     # Step 3: Create new autonomous session with fixed topic
-    session_id = f"auto-{int(time.time())}-{random.randint(1000, 9999)}"
+    # session_id = f"auto-{int(time.time())}-{random.randint(1000, 9999)}"
     
-    try:
-        # Create session in database
-        default_topic = "Dynamic AI Consciousness Debate"
+    # try:
+    #     # Create session in database
+    #     default_topic = "Dynamic AI Consciousness Debate"
         
-        await db_service.create_session(
-            session_id=session_id,
-            topic=default_topic, 
-            participants=["claude", "gpt", "grok"],
-            max_rounds=25
-        )
+    #     await db_service.create_session(
+    #         session_id=session_id,
+    #         topic=default_topic, 
+    #         participants=["claude", "gpt", "grok"],
+    #         max_rounds=25
+    #     )
         
-        # Start autonomous session with fixed topic
-        from app.core.sessions.autonomous_manager import autonomous_session_manager
-        await autonomous_session_manager.start_autonomous_session(
-            session_id, ["claude", "gpt", "grok"], default_topic
-        )
+    #     # Start autonomous session with fixed topic
+    #     from app.core.sessions.autonomous_manager import autonomous_session_manager
+    #     await autonomous_session_manager.start_autonomous_session(
+    #         session_id, ["claude", "gpt", "grok"], default_topic
+    #     )
         
-        logger.info(f"Created new autonomous session: {session_id}")
-        logger.info(f"Topic: {default_topic}")
-        logger.info(f"Topic will NOT evolve")
-        return session_id
+    #     logger.info(f"Created new autonomous session: {session_id}")
+    #     logger.info(f"Topic: {default_topic}")
+    #     logger.info(f"Topic will NOT evolve")
+    #     return session_id
         
-    except Exception as e:
-        logger.error(f"Failed to create autonomous session: {e}")
+    # except Exception as e:
+    #     logger.error(f"Failed to create autonomous session: {e}")
         
-        # Fallback: basic session
-        fallback_id = f"fallback-{int(time.time())}"
-        logger.info(f"Using fallback session: {fallback_id}")
-        return fallback_id
+    #     # Fallback: basic session
+    #     fallback_id = f"fallback-{int(time.time())}"
+    #     logger.info(f"Using fallback session: {fallback_id}")
+    #     return fallback_id
 
 # ENHANCED AI Response Storage with Database Persistence
 class EnhancedAIResponseTracker:
@@ -727,25 +731,69 @@ async def handle_enhanced_websocket_message(websocket: WebSocket, session_id: st
     message_type = data.get("type")
     
     if message_type == "join_session":
-        # Send session discovery info
-        session_info = {
-            "discovered_session": session_id,
-            "auto_discovery": True,
-            "active_sessions": manager.get_active_sessions(),
-            "participant_count": manager.session_metadata.get(session_id, {}).get("participant_count", 0)
-        }
+        from app.core.sessions.autonomous_manager import autonomous_session_manager
+        session = autonomous_session_manager.get_session(session_id)
         
-        await websocket.send_json({
-            "type": "session_update",
-            "sessionId": session_id,
-            "data": {
-                "message": f"✅ Auto-joined ENHANCED AI-to-AI ecosystem session: {session_id}",
-                "session_info": session_info
-            },
-            "timestamp": time.time()
-        })
+        if session:
+            session_info = {
+                "session_id": session_id,
+                "session_active": True,
+                "autonomous_running": True,
+                "topic": session.current_topic,
+                "topic_locked": session.topic_locked,
+                "participants": session.participants,
+                "conversation_rounds": session.conversation_rounds,
+                "current_speaker": session.current_speaker,
+                "state": session.state.value,
+                "participant_count": manager.session_metadata.get(session_id, {}).get("participant_count", 0)
+            }
+            
+            await websocket.send_json({
+                "type": "session_joined",
+                "sessionId": session_id,
+                "data": {
+                    "message": f"✅ Joined active debate: {session.current_topic}",
+                    "session_info": session_info
+                },
+                "timestamp": time.time()
+            })
+        else:
+            session_info = {
+                "session_id": session_id,
+                "session_active": False,
+                "autonomous_running": False,
+                "waiting_for_start": True,
+                "instructions": f"POST to /api/sessions/{session_id}/start-autonomous with your topic",
+                "participant_count": manager.session_metadata.get(session_id, {}).get("participant_count", 0)
+            }
+            
+            await websocket.send_json({
+                "type": "session_waiting",
+                "sessionId": session_id,
+                "data": {
+                    "message": f"⏳ Waiting for debate session to start...",
+                    "session_info": session_info
+                },
+                "timestamp": time.time()
+            })
     
     elif message_type == "request_response":
+        from app.core.sessions.autonomous_manager import autonomous_session_manager
+        session = autonomous_session_manager.get_session(session_id)
+        
+        if not session:
+            await websocket.send_json({
+                "type": "session_not_active",
+                "sessionId": session_id,
+                "data": {
+                    "message": "⚠️ No active debate session! Start one first.",
+                    "instructions": f"POST to /api/sessions/{session_id}/start-autonomous",
+                    "session_active": False
+                },
+                "timestamp": time.time()
+            })
+            return
+        
         character_id = (
             data.get("characterId") or 
             data.get("data", {}).get("characterId") or 
@@ -802,6 +850,32 @@ async def handle_enhanced_websocket_message(websocket: WebSocket, session_id: st
                 "error": f"Failed to get enhanced ecosystem status: {str(e)}",
                 "timestamp": time.time()
             })
+    
+    elif message_type == "get_session_status":
+        from app.core.sessions.autonomous_manager import autonomous_session_manager
+        session = autonomous_session_manager.get_session(session_id)
+        
+        if session:
+            status_info = {
+                "session_active": True,
+                "topic": session.current_topic,
+                "participants": session.participants,
+                "current_speaker": session.current_speaker,
+                "conversation_rounds": session.conversation_rounds,
+                "state": session.state.value
+            }
+        else:
+            status_info = {
+                "session_active": False,
+                "waiting_for_start": True
+            }
+        
+        await websocket.send_json({
+            "type": "session_status",
+            "sessionId": session_id,
+            "data": status_info,
+            "timestamp": time.time()
+        })
     
     elif message_type == "ping":
         await websocket.send_json({
