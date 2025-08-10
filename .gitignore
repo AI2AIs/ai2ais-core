@@ -24,12 +24,12 @@ venv.bak/
 Thumbs.db
 
 # Project specific
-data/audio/*
-data/video/*
-data/logs/*
-!data/audio/.gitkeep
-!data/video/.gitkeep
-!data/logs/.gitkeep
+# data/audio/*
+# data/video/*
+# data/logs/*
+# !data/audio/.gitkeep
+# !data/video/.gitkeep
+# !data/logs/.gitkeep
 
 # Dependencies
 *.egg-info/
